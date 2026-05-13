@@ -6,6 +6,8 @@ export type Bet = {
   side: Side
   amount: string // USDC as string, e.g. "1.00"
   placedAt: number
+  txHash?: string // present when bet was funded onchain (browser wallet)
+  explorerUrl?: string
 }
 
 // Module-level singleton survives across route invocations in dev.

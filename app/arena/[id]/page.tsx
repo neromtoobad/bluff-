@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import EmailLogin from "@/components/EmailLogin"
+import WalletConnect from "@/components/WalletConnect"
 import WalletBadge from "@/components/WalletBadge"
 import BetTotals from "@/components/BetTotals"
 import BettingPanel from "@/components/BettingPanel"
@@ -59,7 +60,13 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
             Sign in to bet
           </p>
         </header>
-        <EmailLogin onWallet={setWallet} />
+        <div className="flex flex-col md:flex-row items-stretch gap-4">
+          <EmailLogin onWallet={setWallet} />
+          <div className="flex items-center justify-center text-[10px] uppercase tracking-[0.3em] text-zinc-600">
+            or
+          </div>
+          <WalletConnect onConnect={setWallet} />
+        </div>
       </main>
     )
   }

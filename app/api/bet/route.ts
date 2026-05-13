@@ -3,11 +3,14 @@ import { bets, type Side } from "@/lib/bets"
 
 export async function POST(req: Request) {
   try {
-    const { walletAddress, side, amount } = (await req.json()) as {
-      walletAddress?: string
-      side?: Side
-      amount?: string
-    }
+    const { walletAddress, side, amount, txHash, explorerUrl } =
+      (await req.json()) as {
+        walletAddress?: string
+        side?: Side
+        amount?: string
+        txHash?: string
+        explorerUrl?: string
+      }
 
     if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
       return NextResponse.json({ error: "valid walletAddress required" }, { status: 400 })
@@ -24,7 +27,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "wallet already placed a bet" }, { status: 409 })
     }
 
-    const bet = { walletAddress, side, amount, placedAt: Date.now() }
+    const bet = {
+      walletAddress,
+      side,
+      amount,
+      placedAt: Date.now(),
+      ...(txHash ? { txHash } : {}),
+      ...(explorerUrl ? { explorerUrl } : {}),
+    }
     bets.set(key, bet)
 
     return NextResponse.json({ ok: true, bet })

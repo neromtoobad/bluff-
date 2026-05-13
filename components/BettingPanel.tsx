@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { usePotTotals } from "./BetTotals"
+import { ARC_FAUCET_URL } from "@/lib/arc-config"
 
 type Side = "A" | "B"
 
@@ -105,17 +106,67 @@ export default function BettingPanel({ walletAddress }: Props) {
     }
     setLoading(true)
     try {
+      let txHash: string | undefined
+      let explorerUrl: string | undefined
+
+      // If the user came in via "Connect Wallet" (browser EOA), try to
+      // settle the bet onchain via Arc App Kit. The treasury address is
+      // the recipient. Mock / email-mode users skip this and record-only.
+      const mode =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("arc:walletMode")
+          : null
+      const treasury =
+        typeof window !== "undefined"
+          ? (window as any).__ARC_TREASURY__ ??
+            process.env.NEXT_PUBLIC_ARC_TREASURY_ADDRESS
+          : null
+
+      if (mode === "browser" && treasury && (window as any).ethereum) {
+        try {
+          const { getBrowserKit } = await import("@/lib/arc")
+          const { kit, adapter } = await getBrowserKit(
+            (window as any).ethereum,
+          )
+          const result = await kit.send({
+            from: { adapter, chain: "Arc_Testnet" },
+            to: treasury,
+            amount,
+            token: "USDC",
+          })
+          if (result.state !== "success") {
+            throw new Error("transfer not finalized — check wallet")
+          }
+          txHash = result.txHash
+          explorerUrl = result.explorerUrl
+        } catch (err: any) {
+          const msg = (err?.message ?? "").toLowerCase()
+          if (
+            msg.includes("insufficient") ||
+            msg.includes("balance") ||
+            msg.includes("exceeds")
+          ) {
+            throw new Error("INSUFFICIENT_BALANCE")
+          }
+          throw err
+        }
+      }
+
       const res = await fetch("/api/bet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress, side, amount }),
+        body: JSON.stringify({
+          walletAddress,
+          side,
+          amount,
+          ...(txHash ? { txHash, explorerUrl } : {}),
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "bet failed")
       const oddsAtLock = side === "A" ? bullOdds : bearOdds
       setPlaced({ side, amount, oddsAtLock })
       setJustPlaced(true)
-      // Drop the flash class after the animation finishes so it can re-fire on remount.
       setTimeout(() => setJustPlaced(false), 1200)
     } catch (err: any) {
       setError(err.message)
@@ -352,9 +403,31 @@ export default function BettingPanel({ walletAddress }: Props) {
       </button>
 
       {error && (
-        <p className="text-xs text-[color:var(--bear)]" role="alert">
-          {error}
-        </p>
+        error === "INSUFFICIENT_BALANCE" ? (
+          <div
+            className="rounded-md border border-[color:var(--bear)]/40 bg-[color:var(--bear)]/10 px-3 py-2 text-xs"
+            role="alert"
+          >
+            <p className="font-semibold text-[color:var(--bear)]">
+              Insufficient balance
+            </p>
+            <p className="mt-1 text-zinc-300">
+              Your wallet doesn&apos;t have enough Arc testnet USDC.
+            </p>
+            <a
+              href={ARC_FAUCET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block font-mono underline text-[color:var(--accent)]"
+            >
+              Get test USDC from the Arc faucet →
+            </a>
+          </div>
+        ) : (
+          <p className="text-xs text-[color:var(--bear)]" role="alert">
+            {error}
+          </p>
+        )
       )}
     </form>
   )

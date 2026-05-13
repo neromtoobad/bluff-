@@ -7,11 +7,17 @@ import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
 const _g = globalThis as unknown as {
   __userIdByEmail?: Map<string, string>
   __mockOtps?: Map<string, string>
+  __circleSessions?: Map<
+    string,
+    { userId: string; userToken: string; encryptionKey: string }
+  >
 }
 const userIdByEmail: Map<string, string> = _g.__userIdByEmail ?? new Map()
 const mockOtps: Map<string, string> = _g.__mockOtps ?? new Map()
+const circleSessions = _g.__circleSessions ?? new Map()
 if (!_g.__userIdByEmail) _g.__userIdByEmail = userIdByEmail
 if (!_g.__mockOtps) _g.__mockOtps = mockOtps
+if (!_g.__circleSessions) _g.__circleSessions = circleSessions
 
 function isMockMode(): boolean {
   const key = process.env.CIRCLE_API_KEY
@@ -26,9 +32,6 @@ export async function POST(req: Request) {
     }
 
     // --- MOCK PATH ---
-    // The real Circle user-controlled-wallet flow requires a client-side SDK
-    // PIN/biometric setup. For demo purposes we issue a fake OTP and key
-    // a deterministic wallet address off the email in /verify.
     if (isMockMode()) {
       let userId = userIdByEmail.get(email)
       if (!userId) {
@@ -46,7 +49,19 @@ export async function POST(req: Request) {
       })
     }
 
-    // --- REAL CIRCLE PATH (placeholder — Circle integration is more involved) ---
+    // --- REAL CIRCLE USER-CONTROLLED WALLETS PATH ---
+    //
+    // NOTE: Circle's documented UCW flow is not a single "email -> OTP -> wallet"
+    // REST endpoint. The canonical flow is:
+    //   1. POST /v1/w3s/users         — create userId
+    //   2. POST /v1/w3s/users/token   — issue a session token + encryption key
+    //   3. (client) initialize the Circle Web SDK with the session token; the
+    //      SDK guides the user through PIN / biometric setup, which provisions
+    //      the wallet and returns a wallet address.
+    //
+    // We do steps 1+2 here. The client uses the returned userToken to drive
+    // the SDK. If you have a custom email-OTP gateway, plug it in where the
+    // mock OTP currently lives.
     const apiKey = process.env.CIRCLE_API_KEY!
     const headers = {
       Authorization: `Bearer ${apiKey}`,
@@ -71,24 +86,63 @@ export async function POST(req: Request) {
       userIdByEmail.set(email, userId)
     }
 
-    const challengeRes = await fetch(`${CIRCLE_API_BASE}/users/email/otp`, {
+    const tokenRes = await fetch(`${CIRCLE_API_BASE}/users/token`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ userId, email }),
+      body: JSON.stringify({ userId }),
     })
-    if (!challengeRes.ok) {
-      const text = await challengeRes.text()
+    if (!tokenRes.ok) {
+      const text = await tokenRes.text()
       return NextResponse.json(
-        { error: "Circle OTP trigger failed", detail: text },
+        { error: "Circle session token failed", detail: text },
         { status: 502 },
       )
     }
-    const challengeJson = (await challengeRes.json()) as {
-      data?: { challengeId?: string }
+    const tokenJson = (await tokenRes.json()) as {
+      data?: { userToken?: string; encryptionKey?: string }
     }
+    const userToken = tokenJson?.data?.userToken
+    const encryptionKey = tokenJson?.data?.encryptionKey
+    if (!userToken || !encryptionKey) {
+      return NextResponse.json(
+        { error: "Circle did not return a userToken" },
+        { status: 502 },
+      )
+    }
+
+    circleSessions.set(userId, { userId, userToken, encryptionKey })
+
+    // Issue a wallet-init challenge that the client SDK can drive.
+    const initRes = await fetch(`${CIRCLE_API_BASE}/user/initialize`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "X-User-Token": userToken,
+      },
+      body: JSON.stringify({
+        idempotencyKey: `init-${userId}`,
+        blockchains: ["ARC-TESTNET"],
+        accountType: "SCA",
+      }),
+    })
+
+    let challengeId = randomUUID()
+    if (initRes.ok) {
+      const initJson = (await initRes.json()) as {
+        data?: { challengeId?: string }
+      }
+      if (initJson?.data?.challengeId) challengeId = initJson.data.challengeId
+    }
+
     return NextResponse.json({
       userId,
-      challengeId: challengeJson?.data?.challengeId ?? randomUUID(),
+      challengeId,
+      userToken,
+      encryptionKey,
+      // The user-controlled flow needs the Circle Web SDK to take it from here.
+      // Email-OTP-only is not a Circle UCW capability without their hosted UI.
+      hint:
+        "Open Circle Web SDK with userToken + encryptionKey to complete wallet setup",
     })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "unknown" }, { status: 500 })
@@ -100,4 +154,4 @@ export function deriveMockAddress(userId: string): string {
   return `0x${hash.slice(0, 40)}`
 }
 
-export { userIdByEmail, mockOtps, isMockMode }
+export { userIdByEmail, mockOtps, isMockMode, circleSessions }

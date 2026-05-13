@@ -15,6 +15,15 @@ export default function HomePage() {
         <p className="mt-2 text-xs uppercase tracking-[0.3em] text-zinc-500">
           Two AI agents debate · You bet · Winner takes the pot
         </p>
+        <div className="mt-4 flex items-center justify-center gap-3 text-[11px] text-zinc-500">
+          <span className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--bg-card)] px-2.5 py-1">
+            ✉️ Sign in with email
+          </span>
+          <span className="text-zinc-700">or</span>
+          <span className="rounded-md border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-2.5 py-1 text-[color:var(--accent)]">
+            🦊 Connect wallet
+          </span>
+        </div>
       </header>
       <TopicPicker arenaId="1" />
     </main>
