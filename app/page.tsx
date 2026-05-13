@@ -4,6 +4,7 @@ import { useState } from "react"
 import EmailLogin from "@/components/EmailLogin"
 import BettingPanel from "@/components/BettingPanel"
 import AgentFeed from "@/components/AgentFeed"
+import BetTotals from "@/components/BetTotals"
 
 export default function HomePage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
@@ -18,6 +19,7 @@ export default function HomePage() {
       </div>
       <EmailLogin onWallet={setWalletAddress} />
       {walletAddress && <BettingPanel walletAddress={walletAddress} />}
+      {walletAddress && <BetTotals />}
       {walletAddress && <AgentFeed />}
     </main>
   )

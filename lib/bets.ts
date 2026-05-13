@@ -13,13 +13,14 @@ const g = globalThis as unknown as { __bets?: Map<string, Bet> }
 export const bets: Map<string, Bet> = g.__bets ?? new Map<string, Bet>()
 if (!g.__bets) g.__bets = bets
 
-export function totalsBySide(): { A: number; B: number } {
-  let A = 0
-  let B = 0
+export function totalsBySide(): {
+  A: { amount: number; bettors: number }
+  B: { amount: number; bettors: number }
+} {
+  const out = { A: { amount: 0, bettors: 0 }, B: { amount: 0, bettors: 0 } }
   for (const b of bets.values()) {
-    const n = Number(b.amount)
-    if (b.side === "A") A += n
-    else B += n
+    out[b.side].amount += Number(b.amount)
+    out[b.side].bettors += 1
   }
-  return { A, B }
+  return out
 }
