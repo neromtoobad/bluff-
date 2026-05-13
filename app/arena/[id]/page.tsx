@@ -32,6 +32,11 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
   // If the server already has a debate running/done when we land, skip lobby.
   const [phase, setPhase] = useState<"lobby" | "live">("lobby")
   const [phaseDecided, setPhaseDecided] = useState(false)
+  // Lobby countdown lifted up to the arena page so the BettingPanel can
+  // stay mounted across the lobby → live transition (which fixes
+  // disappearing bets when the user clicks Place Bet near the boundary).
+  const [lobbyCountdown, setLobbyCountdown] = useState<number | null>(null)
+  const [verdictDismissed, setVerdictDismissed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -183,28 +188,36 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
         </div>
       </header>
 
-      {/* MAIN — lobby phase first, then the live debate */}
-      {phase === "lobby" ? (
-        <Lobby
-          topic={queryTopic ?? arena?.topic ?? "TBD"}
-          walletAddress={wallet}
-          onStart={() => setPhase("live")}
-        />
-      ) : (
-        <main className="flex-1 mx-auto w-full max-w-7xl px-3 py-3 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
-          <section className="min-w-0">
+      {/* MAIN — BettingPanel + BetTotals stay mounted across both phases
+          so a bet placed near the countdown boundary doesn't get eaten by
+          a remount. The left column swaps Lobby ↔ AgentFeed on phase. */}
+      <main className="flex-1 mx-auto w-full max-w-7xl px-3 py-3 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
+        <section className="min-w-0">
+          {phase === "lobby" ? (
+            <Lobby
+              topic={queryTopic ?? arena?.topic ?? "TBD"}
+              onTick={(s) => setLobbyCountdown(s)}
+              onStart={() => {
+                setLobbyCountdown(null)
+                setPhase("live")
+              }}
+            />
+          ) : (
             <AgentFeed
               topic={queryTopic ?? undefined}
               onRoundChange={(r) => setIntroRound(r)}
             />
-          </section>
+          )}
+        </section>
 
-          <aside className="space-y-3">
-            <BetTotals variant="panel" />
-            <BettingPanel walletAddress={wallet} />
-          </aside>
-        </main>
-      )}
+        <aside className="space-y-3">
+          <BetTotals variant="panel" />
+          <BettingPanel
+            walletAddress={wallet}
+            countdownSeconds={phase === "lobby" ? lobbyCountdown : null}
+          />
+        </aside>
+      </main>
 
       {/* TICKER */}
       <footer className="sticky bottom-0 z-20">
@@ -218,11 +231,19 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
         onDone={() => setIntroRound(null)}
       />
 
-      {/* VERDICT OVERLAY */}
-      {verdictReady && (
+      {/* VERDICT OVERLAY — dismissable now, has START NEW FIGHT exit */}
+      {verdictReady && !verdictDismissed && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/85 backdrop-blur-md p-6 overflow-y-auto">
-          <div className="w-full max-w-4xl my-8">
-            <ScoreBoard />
+          <div className="w-full max-w-4xl my-8 relative">
+            <button
+              type="button"
+              onClick={() => setVerdictDismissed(true)}
+              aria-label="Close verdict"
+              className="absolute -top-2 -right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-zinc-100"
+            >
+              ✕
+            </button>
+            <ScoreBoard onClose={() => setVerdictDismissed(true)} />
           </div>
         </div>
       )}

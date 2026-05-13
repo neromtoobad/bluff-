@@ -16,7 +16,16 @@ type Props = {
   countdownSeconds?: number | null
 }
 
-type Placed = { side: Side; amount: string; oddsAtLock?: string }
+type Placed = {
+  side: Side
+  amount: string
+  oddsAtLock?: string
+  txHash?: string
+  explorerUrl?: string
+}
+
+const EXPLORER_BASE =
+  process.env.NEXT_PUBLIC_ARC_EXPLORER_URL ?? "https://explorer.arc.network"
 
 type Verdict = {
   winner: "A" | "B"
@@ -72,17 +81,33 @@ export default function BettingPanel({
   const [placed, setPlaced] = useState<Placed | null>(null)
   const [justPlaced, setJustPlaced] = useState(false)
 
-  // Check if this wallet already has an existing bet (e.g., on hot reload).
+  // Restore any existing bet for this wallet on mount AND poll periodically
+  // so a successful POST from this component (or another tab) reflects
+  // even if the local setState was interrupted by a remount.
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/bet?walletAddress=${encodeURIComponent(walletAddress)}`)
-      .then((r) => r.json())
-      .then((j: { bet?: Placed | null }) => {
-        if (!cancelled && j?.bet) setPlaced({ side: j.bet.side, amount: j.bet.amount })
-      })
-      .catch(() => {})
+    async function load() {
+      try {
+        const r = await fetch(
+          `/api/bet?walletAddress=${encodeURIComponent(walletAddress)}`,
+          { cache: "no-store" },
+        )
+        const j = (await r.json()) as { bet?: Placed | null }
+        if (!cancelled && j?.bet) {
+          setPlaced({
+            side: j.bet.side,
+            amount: j.bet.amount,
+            txHash: j.bet.txHash,
+            explorerUrl: j.bet.explorerUrl,
+          })
+        }
+      } catch {}
+    }
+    load()
+    const id = setInterval(load, 4000)
     return () => {
       cancelled = true
+      clearInterval(id)
     }
   }, [walletAddress])
 
@@ -172,10 +197,22 @@ export default function BettingPanel({
           ...(txHash ? { txHash, explorerUrl } : {}),
         }),
       })
-      const json = await res.json()
+      const json = (await res.json()) as {
+        error?: string
+        bet?: {
+          txHash?: string
+          explorerUrl?: string
+        }
+      }
       if (!res.ok) throw new Error(json.error ?? "bet failed")
       const oddsAtLock = side === "A" ? bullOdds : bearOdds
-      setPlaced({ side, amount, oddsAtLock })
+      setPlaced({
+        side,
+        amount,
+        oddsAtLock,
+        txHash: json.bet?.txHash ?? txHash,
+        explorerUrl: json.bet?.explorerUrl ?? explorerUrl,
+      })
       setJustPlaced(true)
       setTimeout(() => setJustPlaced(false), 1200)
     } catch (err: any) {
@@ -272,8 +309,29 @@ export default function BettingPanel({
             at {oddsForPayout}x odds
           </div>
         </div>
+
+        {/* Onchain receipt — the whole point. Always visible when we have a hash. */}
+        {placed.txHash ? (
+          <a
+            href={placed.explorerUrl ?? `${EXPLORER_BASE}/tx/${placed.txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-between rounded border border-current/40 bg-black/50 px-3 py-2 hover:bg-black/70 transition"
+          >
+            <span className="font-ui-label text-[10px] opacity-80">
+              View on Arc Explorer
+            </span>
+            <span className="font-mono text-[11px] opacity-90 truncate ml-2">
+              {placed.txHash.slice(0, 10)}…{placed.txHash.slice(-6)}
+            </span>
+          </a>
+        ) : (
+          <p className="mt-3 text-[10px] uppercase tracking-widest opacity-60">
+            Tx hash pending…
+          </p>
+        )}
         <p className="mt-3 text-[10px] uppercase tracking-widest opacity-60">
-          Settlement after round 4
+          Settlement payout after the debate
         </p>
       </div>
     )
@@ -457,11 +515,17 @@ export default function BettingPanel({
 
       <button
         type="submit"
-        disabled={loading || !side || !amount}
-        className="cta-glow w-full rounded-md bg-[color:var(--accent)] py-3 font-display text-xl tracking-[0.08em] text-black transition hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
+        disabled={loading}
+        className="cta-glow w-full rounded-md bg-[color:var(--accent)] py-3 font-display text-xl tracking-[0.08em] text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-wait"
         style={{ letterSpacing: "0.08em" }}
       >
-        {loading ? "PLACING…" : "PLACE BET"}
+        {loading
+          ? "PLACING ONCHAIN…"
+          : !side
+            ? "PICK A FIGHTER"
+            : !amount
+              ? "ENTER A STAKE"
+              : `PLACE $${amount} ON ${side === "A" ? "BULL" : "BEAR"}`}
       </button>
 
       {error && (

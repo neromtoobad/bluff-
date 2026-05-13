@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react"
 
+type Props = {
+  onClose?: () => void
+}
+
 type Score = { logic: number; evidence: number; persuasiveness: number; total: number }
 type Verdict = {
   winner: "A" | "B"
@@ -29,8 +33,29 @@ type State = {
 
 const POLL_MS = 1500
 
-export default function ScoreBoard() {
+export default function ScoreBoard({ onClose }: Props = {}) {
   const [state, setState] = useState<State | null>(null)
+  const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
+
+  async function retrySettlement() {
+    setRetrying(true)
+    setRetryError(null)
+    try {
+      const res = await fetch("/api/settle", {
+        method: "POST",
+        cache: "no-store",
+      })
+      const json = await res.json()
+      if (!res.ok && !json.payouts) {
+        throw new Error(json.error ?? "settlement failed")
+      }
+    } catch (err: any) {
+      setRetryError(err.message ?? "retry failed")
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -76,6 +101,23 @@ export default function ScoreBoard() {
 
   return (
     <div className="space-y-3">
+      {/* Top bar — close + new fight */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-[11px] font-ui-label text-zinc-400 hover:text-zinc-100 transition"
+        >
+          ← Back to arena
+        </button>
+        <a
+          href="/"
+          className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 font-display text-sm text-black hover:brightness-110"
+        >
+          START A NEW FIGHT →
+        </a>
+      </div>
+
       {/* Winner banner */}
       <div
         className="rounded-lg border p-5 text-center bubble-pop"
@@ -124,6 +166,9 @@ export default function ScoreBoard() {
       <SettlementPanel
         settlement={state.settlement}
         payouts={state.payouts ?? []}
+        onRetry={retrySettlement}
+        retrying={retrying}
+        retryError={retryError}
       />
     </div>
   )
@@ -204,9 +249,15 @@ function shortAddr(a: string) {
 function SettlementPanel({
   settlement,
   payouts,
+  onRetry,
+  retrying,
+  retryError,
 }: {
   settlement: State["settlement"]
   payouts: Payout[]
+  onRetry?: () => void
+  retrying?: boolean
+  retryError?: string | null
 }) {
   if (settlement === "idle") return null
 
@@ -286,6 +337,28 @@ function SettlementPanel({
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {settlement === "error" && (
+        <div className="mt-3 rounded border border-[color:var(--bear)]/40 bg-[color:var(--bear)]/10 p-3">
+          <p className="text-[11px] text-zinc-200">
+            Some payouts failed. Check that the treasury wallet has Arc
+            testnet USDC and retry.
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={retrying}
+            className="mt-2 rounded bg-[color:var(--accent)] px-3 py-1.5 font-display text-sm text-black hover:brightness-110 disabled:opacity-50"
+          >
+            {retrying ? "RETRYING…" : "RETRY SETTLEMENT"}
+          </button>
+          {retryError && (
+            <p className="mt-2 text-[11px] text-[color:var(--bear)]">
+              {retryError}
+            </p>
+          )}
         </div>
       )}
     </div>

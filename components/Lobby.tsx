@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import BetTotals from "@/components/BetTotals"
-import BettingPanel from "@/components/BettingPanel"
 
 type Props = {
   topic: string
-  walletAddress: string
+  // walletAddress kept for backward-compat; the betting panel is now
+  // mounted by the arena page so it survives the lobby → live transition.
+  walletAddress?: string
   countdownSeconds?: number
+  onTick?: (secs: number) => void
   onStart: () => void
 }
 
@@ -28,8 +29,8 @@ const BEAR_STATS: FighterStats = {
 
 export default function Lobby({
   topic,
-  walletAddress,
   countdownSeconds = 15,
+  onTick,
   onStart,
 }: Props) {
   const [secs, setSecs] = useState(countdownSeconds)
@@ -38,18 +39,19 @@ export default function Lobby({
   const spectators = useMemo(() => 8 + Math.floor(Math.random() * 33), [])
 
   useEffect(() => {
+    onTick?.(secs)
     if (secs <= 0) {
       onStart()
       return
     }
     const id = setTimeout(() => setSecs((s) => s - 1), 1000)
     return () => clearTimeout(id)
-  }, [secs, onStart])
+  }, [secs, onStart, onTick])
 
   const urgent = secs <= 3
 
   return (
-    <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+    <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-6">
       <section className="space-y-5">
         {/* Topic banner */}
         <div className="text-center">
@@ -107,14 +109,6 @@ export default function Lobby({
           </p>
         </div>
       </section>
-
-      <aside className="space-y-3">
-        <BetTotals variant="panel" />
-        <BettingPanel
-          walletAddress={walletAddress}
-          countdownSeconds={secs}
-        />
-      </aside>
     </main>
   )
 }
