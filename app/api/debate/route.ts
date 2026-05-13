@@ -15,9 +15,73 @@ export const dynamic = "force-dynamic"
 
 const MODEL = "claude-haiku-4-5-20251001"
 
+// --- Pacing ---
+// Tokens here are word-chunks (incl. whitespace) sent to the client.
+// BURST_TOKENS × inter-burst pause = effective tokens/sec to client.
+// We're well under 30 tok/sec — the goal is "thinking", not throughput.
+const BURST_TOKENS = 6
+const BURST_PAUSE_MS = 800
+const INTER_TURN_PAUSE_MS = 2000
+const INTER_ROUND_PAUSE_MS = 3000
+const WORD_LIMIT = 80
+// Allow the model to overshoot a little so we can cap at a clean sentence
+// boundary instead of mid-word.
+const OVERSHOOT_WORDS = 120
+
+const ROUND_INTENSITY: Record<number, string> = {
+  1: [
+    `INTENSITY — Round 1: MEASURED.`,
+    `Establish your position cleanly. Lead with your core claim and one concrete data point.`,
+    `You're warming up — confident, not yet swinging.`,
+  ].join("\n"),
+  2: [
+    `INTENSITY — Round 2: PERSONAL.`,
+    `Get specific. Quote your opponent's exact words back at them and attack that claim by name.`,
+    `Make it feel like a direct counter-punch.`,
+  ].join("\n"),
+  3: [
+    `INTENSITY — Round 3: NO MERCY.`,
+    `Most aggressive round of the fight. Treat your opponent like they insulted you.`,
+    `Sharpest closer you've got. Make them eat it.`,
+  ].join("\n"),
+  4: [
+    `INTENSITY — Round 4: CLOSING ARGUMENT.`,
+    `Final word. Confident, almost smug — speak like the judge has already decided.`,
+    `Sum up why you've already won. No questions, only conclusions.`,
+  ].join("\n"),
+}
+
 function sseChunk(event: string, data: unknown): Uint8Array {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
   return new TextEncoder().encode(payload)
+}
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function capAt80Words(text: string): string {
+  const wc = wordCount(text)
+  if (wc <= WORD_LIMIT) return text.trim()
+  // Slice at the 80-word mark, then walk back to the last sentence terminator.
+  const words = text.trim().split(/(\s+)/) // preserve whitespace
+  let count = 0
+  let sliceEnd = words.length
+  for (let i = 0; i < words.length; i++) {
+    if (/\S/.test(words[i])) {
+      count++
+      if (count > WORD_LIMIT) {
+        sliceEnd = i
+        break
+      }
+    }
+  }
+  const truncated = words.slice(0, sliceEnd).join("")
+  // Walk back to last . ! ? followed by whitespace or end-of-string.
+  const m = truncated.match(/[\s\S]*[.!?](?!\S)/)
+  if (m) return m[0].trim()
+  // No sentence boundary found — cut at last word.
+  return truncated.trim()
 }
 
 function userPromptFor(
@@ -33,7 +97,7 @@ function userPromptFor(
     : ""
 
   const rules = [
-    `Rules: 3 sentences max. No academic words. Attack Agent ${opponent} directly. End with a brutal one-liner on its own line.`,
+    `Rules: 3 sentences max, under ${WORD_LIMIT} words. No academic words. Attack Agent ${opponent} directly. End with a brutal one-liner on its own line.`,
   ].join("\n")
 
   if (history.length === 0) {
@@ -113,13 +177,20 @@ export async function GET(req: Request) {
         })
 
         for (let round = 1; round <= ROUNDS; round++) {
+          // 3-second gap between rounds — the RoundIntro overlay flashes
+          // during this window on the client.
+          if (round > 1) {
+            await new Promise((r) => setTimeout(r, INTER_ROUND_PAUSE_MS))
+          }
           setRound(round)
           send("round", { round, of: ROUNDS })
 
           for (const [idx, side] of (["A", "B"] as const).entries()) {
-            // Dramatic pause between turns (skip before the very first turn).
+            // 2-second beat between turns. Skip before the very first turn
+            // so the fight starts crisp. The client's turn_start handler
+            // shows a 'preparing argument…' placeholder during this pause.
             if (!(round === 1 && idx === 0)) {
-              await new Promise((r) => setTimeout(r, 500))
+              await new Promise((r) => setTimeout(r, INTER_TURN_PAUSE_MS))
             }
             send("turn_start", { agent: side, round })
 
@@ -147,27 +218,42 @@ export async function GET(req: Request) {
             }
 
             const userPrompt = userPromptFor(side, topic, history, round, insight)
-            let buffered = ""
+            const system = `${systemPromptFor(side, topic)}\n\n${ROUND_INTENSITY[round] ?? ""}`
 
+            // Phase 1 — collect from Anthropic. We let the model finish (or
+            // overshoot a little past WORD_LIMIT) so the cap can land on a
+            // clean sentence boundary instead of mid-word.
             const turnStream = client.messages.stream({
               model: MODEL,
-              max_tokens: 180,
-              system: systemPromptFor(side, topic),
+              max_tokens: 220,
+              system,
               messages: [{ role: "user", content: userPrompt }],
             })
-
+            let full = ""
             for await (const event of turnStream) {
               if (
                 event.type === "content_block_delta" &&
                 event.delta.type === "text_delta"
               ) {
-                const text = event.delta.text
-                buffered += text
-                send("delta", { agent: side, round, text })
+                full += event.delta.text
+                if (wordCount(full) >= OVERSHOOT_WORDS) break
               }
             }
 
-            const turn = { agent: side, round, text: buffered }
+            // Phase 2 — hard cap at WORD_LIMIT, snapping to last sentence.
+            const capped = capAt80Words(full)
+
+            // Phase 3 — stream out at the deliberate pace.
+            const tokens = capped.split(/(\s+)/) // alternate word / whitespace
+            for (let i = 0; i < tokens.length; i += BURST_TOKENS) {
+              const burst = tokens.slice(i, i + BURST_TOKENS).join("")
+              if (burst) send("delta", { agent: side, round, text: burst })
+              if (i + BURST_TOKENS < tokens.length) {
+                await new Promise((r) => setTimeout(r, BURST_PAUSE_MS))
+              }
+            }
+
+            const turn = { agent: side, round, text: capped }
             history.push(turn)
             recordTurn(turn)
             send("turn_end", turn)
