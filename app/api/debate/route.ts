@@ -9,6 +9,11 @@ import {
   setRound,
   setStatus,
 } from "@/lib/debate-state"
+import {
+  getInsightWithFallback,
+  listServices,
+  type MarketplaceService,
+} from "@/lib/circle-marketplace"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -124,25 +129,9 @@ function userPromptFor(
   ].join("\n")
 }
 
-async function fetchResearch(
-  origin: string,
-  topic: string,
-  agent: "A" | "B",
-  round: number,
-): Promise<{ insight: string; cost: number } | null> {
-  try {
-    const res = await fetch(`${origin}/api/research`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, agent, round }),
-      cache: "no-store",
-    })
-    if (!res.ok) return null
-    return (await res.json()) as { insight: string; cost: number }
-  } catch {
-    return null
-  }
-}
+// Legacy single-endpoint fetcher — kept for reference. Live calls now go
+// through lib/circle-marketplace which picks a marketplace service and
+// falls back to /api/research when the marketplace API isn't reachable.
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
@@ -168,12 +157,29 @@ export async function GET(req: Request) {
       const send = (event: string, data: unknown) =>
         controller.enqueue(sseChunk(event, data))
 
+      // Discover marketplace services once at the start of the fight.
+      // Falls back to local /api/research if Circle's marketplace API
+      // is unreachable (currently always — endpoint returns 404).
+      let services: MarketplaceService[] = []
+      try {
+        services = await listServices("research")
+      } catch {
+        services = []
+      }
+
       try {
         resetDebate(topic)
         send("start", { topic, rounds: ROUNDS })
         send("balances", {
           A: balances.A.toFixed(3),
           B: balances.B.toFixed(3),
+        })
+        send("services", {
+          services: services.map((s) => ({
+            id: s.id,
+            name: s.name,
+            provider: s.provider,
+          })),
         })
 
         for (let round = 1; round <= ROUNDS; round++) {
@@ -194,10 +200,19 @@ export async function GET(req: Request) {
             }
             send("turn_start", { agent: side, round })
 
-            // Pull research once per round, deduct from balance.
+            // Pull research once per round via the marketplace lib, deduct
+            // from balance. The lib picks a service, attempts payment, and
+            // falls back to local /api/research if the chosen service is
+            // unreachable.
             let insight: string | null = null
             if (balances[side] >= RESEARCH_COST_USDC) {
-              const r = await fetchResearch(origin, topic, side, round)
+              const r = await getInsightWithFallback({
+                origin,
+                services,
+                topic,
+                agent: side,
+                round,
+              })
               if (r) {
                 balances[side] = Math.max(0, balances[side] - r.cost)
                 insight = r.insight
@@ -206,6 +221,8 @@ export async function GET(req: Request) {
                   round,
                   cost: r.cost,
                   insight: r.insight,
+                  service: r.service,
+                  txHash: r.txHash,
                 })
                 send("research", {
                   agent: side,
@@ -213,6 +230,9 @@ export async function GET(req: Request) {
                   insight: r.insight,
                   cost: r.cost.toFixed(3),
                   balance: balances[side].toFixed(3),
+                  service: r.service,
+                  txHash: r.txHash,
+                  fallback: r.fallback,
                 })
               }
             }

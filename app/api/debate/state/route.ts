@@ -20,6 +20,8 @@ export async function GET() {
       cost: r.cost.toFixed(3),
       insight: r.insight,
       at: r.at,
+      service: r.service,
+      txHash: r.txHash,
     })),
     transcript: s.transcript,
     verdict: s.verdict,

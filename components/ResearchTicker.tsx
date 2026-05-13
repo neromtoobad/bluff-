@@ -8,6 +8,8 @@ type ResearchRow = {
   cost: string
   insight: string
   at: number
+  service?: string
+  txHash?: string
 }
 
 type State = {
@@ -71,6 +73,8 @@ export default function ResearchTicker({ variant = "panel" }: Props = {}) {
               <div className="flex gap-6 ticker-track whitespace-nowrap">
                 {[...rows, ...rows].map((r, i) => {
                   const isA = r.agent === "A"
+                  const teamLabel = isA ? "BULL" : "BEAR"
+                  const service = r.service ?? "research"
                   return (
                     <span key={i} className="inline-flex items-center gap-2">
                       <span className="text-base leading-none">
@@ -84,10 +88,33 @@ export default function ResearchTicker({ variant = "panel" }: Props = {}) {
                       >
                         R{r.round}
                       </span>
-                      <span className="font-mono text-zinc-500">
-                        −${r.cost}
+                      <span
+                        className="font-ui-label text-[10px]"
+                        style={{
+                          color: isA ? "var(--bull)" : "var(--bear)",
+                        }}
+                      >
+                        {teamLabel} paid
                       </span>
-                      <span className="text-zinc-300">{r.insight}</span>
+                      <span className="font-mono text-zinc-200">
+                        ${r.cost}
+                      </span>
+                      <span className="text-zinc-500">→</span>
+                      <span className="text-zinc-100 font-semibold">
+                        {service}
+                      </span>
+                      <span className="text-zinc-500">
+                        via Circle Gateway
+                      </span>
+                      {r.txHash && (
+                        <span className="font-mono text-[color:var(--accent)]">
+                          {r.txHash.slice(0, 8)}…
+                        </span>
+                      )}
+                      <span className="text-zinc-600">·</span>
+                      <span className="text-zinc-400 italic">
+                        {r.insight}
+                      </span>
                       <span className="text-zinc-700">▪</span>
                     </span>
                   )

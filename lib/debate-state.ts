@@ -19,6 +19,8 @@ export type ResearchEntry = {
   cost: number
   insight: string
   at: number
+  service?: string
+  txHash?: string
 }
 
 export type Payout = {
