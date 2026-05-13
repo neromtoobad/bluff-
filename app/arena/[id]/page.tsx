@@ -8,6 +8,7 @@ import BetTotals from "@/components/BetTotals"
 import BettingPanel from "@/components/BettingPanel"
 import AgentFeed from "@/components/AgentFeed"
 import ResearchTicker from "@/components/ResearchTicker"
+import RoundIntro from "@/components/RoundIntro"
 import ScoreBoard from "@/components/ScoreBoard"
 
 type ArenaState = {
@@ -24,6 +25,7 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
   const queryTopic = searchParams.get("topic")
   const [wallet, setWallet] = useState<string | null>(null)
   const [arena, setArena] = useState<ArenaState | null>(null)
+  const [introRound, setIntroRound] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,7 +140,10 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
       {/* MAIN */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-3 py-3 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
         <section className="min-w-0">
-          <AgentFeed topic={queryTopic ?? undefined} />
+          <AgentFeed
+            topic={queryTopic ?? undefined}
+            onRoundChange={(r) => setIntroRound(r)}
+          />
         </section>
 
         <aside className="space-y-3">
@@ -151,6 +156,13 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
       <footer className="sticky bottom-0 z-20">
         <ResearchTicker variant="bar" />
       </footer>
+
+      {/* ROUND INTRO */}
+      <RoundIntro
+        round={introRound}
+        totalRounds={TOTAL_ROUNDS}
+        onDone={() => setIntroRound(null)}
+      />
 
       {/* VERDICT OVERLAY */}
       {verdictReady && (

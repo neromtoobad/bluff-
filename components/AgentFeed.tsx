@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import HypeMeter from "./HypeMeter"
 
 type Props = {
   topic?: string
   autoStart?: boolean
+  onRoundChange?: (round: number) => void
 }
 
 type AgentState = {
@@ -12,17 +14,79 @@ type AgentState = {
   past: string[] // completed historical turns, newest last
   speaking: boolean
   round: number
+  confidence: number // 0-100, recomputed on each turn_end
 }
 
 const TOTAL_ROUNDS = 4
-const initial: AgentState = { current: "", past: [], speaking: false, round: 0 }
+const initial: AgentState = {
+  current: "",
+  past: [],
+  speaking: false,
+  round: 0,
+  confidence: 0,
+}
 
-export default function AgentFeed({ topic, autoStart = true }: Props) {
+// Confidence = response length (capped) + assertiveness keyword density.
+// Quick, deterministic, frontend-only.
+const ASSERTIVE_RE =
+  /\b(obvious|clearly|factual|absolute|undeniabl|definitiv|exactly|fundamental|certain|crush|destroy|murder|wreck|wrong|ignoran|naive|toy|joke|nonsense|garbage|rubbish|brutal|cooked|dead|done|over|finished|never|always|already|literally|simply|just)/gi
+const HEDGE_RE = /\b(maybe|perhaps|might|could|possibly|arguably|somewhat|kinda|sort of|i think|i guess)/gi
+
+function computeConfidence(text: string): number {
+  if (!text) return 0
+  const words = text.trim().split(/\s+/).length
+  const lengthScore = Math.min(60, words * 1.2) // up to 60 from length
+  const assertiveHits = (text.match(ASSERTIVE_RE) || []).length
+  const keywordScore = Math.min(40, assertiveHits * 7)
+  const hedgeHits = (text.match(HEDGE_RE) || []).length
+  const hedgePenalty = Math.min(20, hedgeHits * 5)
+  const raw = lengthScore + keywordScore - hedgePenalty
+  return Math.round(Math.max(0, Math.min(100, raw)))
+}
+
+function useTween(target: number, durationMs = 700): number {
+  const [value, setValue] = useState(target)
+  const fromRef = useRef(target)
+  const startRef = useRef(0)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    fromRef.current = value
+    startRef.current = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - startRef.current) / durationMs)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setValue(fromRef.current + (target - fromRef.current) * eased)
+      if (t < 1) rafRef.current = requestAnimationFrame(tick)
+    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, durationMs])
+
+  return value
+}
+
+export default function AgentFeed({
+  topic,
+  autoStart = true,
+  onRoundChange,
+}: Props) {
   const [round, setRound] = useState(0)
   const [a, setA] = useState<AgentState>(initial)
   const [b, setB] = useState<AgentState>(initial)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Keep latest callback in a ref so we don't re-open the EventSource when
+  // the parent's closure identity changes.
+  const onRoundRef = useRef(onRoundChange)
+  useEffect(() => {
+    onRoundRef.current = onRoundChange
+  }, [onRoundChange])
 
   useEffect(() => {
     if (!autoStart) return
@@ -32,8 +96,11 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
     const es = new EventSource(url)
 
     es.addEventListener("round", (e) => {
-      const { round } = JSON.parse((e as MessageEvent).data)
+      const { round } = JSON.parse((e as MessageEvent).data) as {
+        round: number
+      }
       setRound(round)
+      onRoundRef.current?.(round)
     })
 
     es.addEventListener("turn_start", (e) => {
@@ -65,6 +132,7 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
         speaking: false,
         current: "",
         past: [...s.past, text],
+        confidence: computeConfidence(text),
       }))
     })
 
@@ -87,31 +155,34 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
   }, [topic, autoStart])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <AgentCard
-        team="bull"
-        name="BULL"
-        emoji="🐂"
-        state={a}
-        totalRounds={TOTAL_ROUNDS}
-      />
-      <AgentCard
-        team="bear"
-        name="BEAR"
-        emoji="🐻"
-        state={b}
-        totalRounds={TOTAL_ROUNDS}
-      />
+    <div className="space-y-2">
+      {/* HYPE METER — horizontal bar between the two agent columns */}
+      <HypeMeter />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <AgentCard
+          team="bull"
+          name="BULL"
+          emoji="🐂"
+          state={a}
+          totalRounds={TOTAL_ROUNDS}
+        />
+        <AgentCard
+          team="bear"
+          name="BEAR"
+          emoji="🐻"
+          state={b}
+          totalRounds={TOTAL_ROUNDS}
+        />
+      </div>
+
       {error && (
-        <p
-          className="col-span-full text-xs text-[color:var(--bear)]"
-          role="alert"
-        >
+        <p className="text-xs text-[color:var(--bear)]" role="alert">
           {error}
         </p>
       )}
       {done && (
-        <p className="col-span-full text-center text-[10px] uppercase tracking-widest text-zinc-500">
+        <p className="text-center text-[10px] uppercase tracking-widest text-zinc-500">
           Round {TOTAL_ROUNDS} complete · awaiting verdict
         </p>
       )}
@@ -135,6 +206,12 @@ function AgentCard({
   const color = team === "bull" ? "var(--bull)" : "var(--bear)"
   const soft = team === "bull" ? "var(--bull-soft)" : "var(--bear-soft)"
   const liveBubbleKey = `${state.round}-${state.current.length === 0 && state.speaking ? "warming" : "live"}`
+
+  const tweenedConfidence = useTween(state.confidence)
+  const confidenceLabel =
+    state.confidence === 0
+      ? "—"
+      : Math.round(tweenedConfidence).toString().padStart(2, "0")
 
   return (
     <div
@@ -170,18 +247,20 @@ function AgentCard({
               style={{ background: color }}
             />
           )}
-          <span
-            className="rounded border px-2 py-0.5 text-[10px] font-mono tracking-wider"
-            style={{ borderColor: "var(--border-soft)", color }}
-          >
-            R{state.round || "-"}/{totalRounds}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span
+              className="rounded border px-2 py-0.5 text-[10px] font-mono tracking-wider"
+              style={{ borderColor: "var(--border-soft)", color }}
+            >
+              R{state.round || "-"}/{totalRounds}
+            </span>
+            <ConfidenceBadge value={state.confidence} label={confidenceLabel} color={color} />
+          </div>
         </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 flex flex-col gap-2 px-3 py-3 min-h-[300px]">
-        {/* Live / latest bubble */}
         {(state.speaking || state.current) && (
           <SpeechBubble
             key={liveBubbleKey}
@@ -199,7 +278,6 @@ function AgentCard({
           />
         )}
 
-        {/* Older turns, stacked + faded */}
         {state.past.length > 1 && !state.speaking && (
           <div className="space-y-2 pt-1 opacity-50">
             {state.past
@@ -229,7 +307,6 @@ function AgentCard({
           </div>
         )}
 
-        {/* Empty state */}
         {!state.speaking && state.past.length === 0 && !state.current && (
           <p className="text-xs italic text-zinc-600">
             Waiting for opening statement…
@@ -237,6 +314,37 @@ function AgentCard({
         )}
       </div>
     </div>
+  )
+}
+
+function ConfidenceBadge({
+  value,
+  label,
+  color,
+}: {
+  value: number
+  label: string
+  color: string
+}) {
+  // Color shifts subtly with score: low = muted, high = full team color.
+  const alpha = value === 0 ? 0.2 : 0.3 + (value / 100) * 0.7
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-mono tracking-wider"
+      style={{
+        borderColor: "var(--border-soft)",
+        background: "rgba(0,0,0,0.4)",
+      }}
+      title={`Confidence ${value}/100`}
+    >
+      <span className="text-zinc-500 uppercase text-[9px]">CNF</span>
+      <span
+        className="font-bold tabular-nums"
+        style={{ color, opacity: alpha }}
+      >
+        {label}
+      </span>
+    </span>
   )
 }
 

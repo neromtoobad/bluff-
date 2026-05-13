@@ -117,3 +117,48 @@ body {
 .flash-bear {
   animation: flash-bear 1100ms ease-out 1;
 }
+
+@keyframes round-card {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  28% {
+    transform: scale(1);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes round-backdrop {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.round-card-in {
+  animation: round-card 1500ms ease-out forwards;
+}
+
+.round-backdrop-in {
+  animation: round-backdrop 1500ms ease-out forwards;
+}
