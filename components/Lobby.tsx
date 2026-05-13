@@ -53,10 +53,13 @@ export default function Lobby({
       <section className="space-y-5">
         {/* Topic banner */}
         <div className="text-center">
-          <p className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">
-            Tonight's fight
+          <p className="font-ui-label text-[10px] text-[color:var(--text-mute)]">
+            Tonight's debate
           </p>
-          <h1 className="mt-2 text-3xl sm:text-5xl font-black tracking-tight leading-tight">
+          <h1
+            className="mt-2 font-mono italic underline underline-offset-8 decoration-[color:var(--text-mute)]/40 leading-snug"
+            style={{ fontSize: "clamp(22px, 3.4vw, 36px)" }}
+          >
             {topic}
           </h1>
         </div>

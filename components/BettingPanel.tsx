@@ -316,13 +316,15 @@ export default function BettingPanel({ walletAddress }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3 space-y-3"
+      className="bet-slip p-4 pt-5 space-y-3"
     >
       <div className="flex items-baseline justify-between">
-        <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-          Bet slip
+        <h3 className="font-display text-2xl leading-none text-[color:var(--accent)]">
+          BET SLIP
         </h3>
-        <span className="text-[10px] text-zinc-500">USDC</span>
+        <span className="font-ui-label text-[10px] text-[color:var(--text-mute)]">
+          USDC
+        </span>
       </div>
 
       {/* Lock countdown */}
@@ -411,9 +413,10 @@ export default function BettingPanel({ walletAddress }: Props) {
       <button
         type="submit"
         disabled={loading || !side || !amount}
-        className="w-full rounded-md bg-[color:var(--accent)] py-2.5 text-sm font-black tracking-wider uppercase text-black hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
+        className="cta-glow w-full rounded-md bg-[color:var(--accent)] py-3 font-display text-xl tracking-[0.08em] text-black transition hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
+        style={{ letterSpacing: "0.08em" }}
       >
-        {loading ? "Placing…" : "Place bet"}
+        {loading ? "PLACING…" : "PLACE BET"}
       </button>
 
       {error && (
@@ -483,7 +486,16 @@ function FighterButton({
           {label}
         </span>
       </span>
-      <span className="mt-1 font-mono text-lg font-bold tabular-nums">
+      <span
+        className="mt-1 font-display text-2xl leading-none tabular-nums"
+        style={{
+          color: team === "bull" ? "var(--bull)" : "var(--bear)",
+          textShadow:
+            team === "bull"
+              ? "0 0 12px rgba(247,183,49,0.45)"
+              : "0 0 12px rgba(255,59,59,0.45)",
+        }}
+      >
         {odds === "—" ? "—" : `${odds}x`}
       </span>
     </button>

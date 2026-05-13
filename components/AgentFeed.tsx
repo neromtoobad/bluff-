@@ -214,10 +214,12 @@ function AgentCard({
       ? "—"
       : Math.round(tweenedConfidence).toString().padStart(2, "0")
 
+  const gradClass = team === "bull" ? "grad-border-bull" : "grad-border-bear"
+
   return (
     <div className="flex flex-col">
       {/* 3D visualizer — sits above the text card */}
-      <div className="flex justify-center pt-1 pb-3">
+      <div className="flex justify-center pt-1 pb-4">
         <AgentVisualizer
           side={team}
           isSpeaking={state.speaking}
@@ -225,106 +227,108 @@ function AgentCard({
         />
       </div>
 
-    <div
-      className="flex flex-col rounded-lg border bg-[color:var(--bg-card)] overflow-hidden"
-      style={{ borderColor: state.speaking ? color : "var(--border)" }}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-3 py-2 border-b"
-        style={{
-          borderColor: "var(--border)",
-          background: state.speaking ? soft : "var(--bg-card-2)",
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-2xl leading-none">{emoji}</span>
-          <div>
-            <div
-              className="text-sm font-black tracking-widest"
-              style={{ color }}
-            >
-              AGENT {name}
+      <div className={gradClass}>
+        <div
+          className="flex flex-col rounded-[13px] bg-[color:var(--bg-card)] overflow-hidden min-h-[460px]"
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between px-4 py-3 border-b"
+            style={{
+              borderColor: "var(--border)",
+              background: state.speaking ? soft : "var(--bg-card-2)",
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-3xl leading-none">{emoji}</span>
+              <div>
+                <div
+                  className="font-display leading-none"
+                  style={{
+                    color,
+                    fontSize: "40px",
+                    textShadow: state.speaking
+                      ? `0 0 18px ${color === "var(--bull)" ? "rgba(247,183,49,0.55)" : "rgba(255,59,59,0.55)"}`
+                      : "none",
+                  }}
+                >
+                  AGENT {name}
+                </div>
+                <div className="font-ui-label text-[10px] text-[color:var(--text-mute)] mt-1">
+                  {team === "bull" ? "Arguing FOR" : "Arguing AGAINST"}
+                </div>
+              </div>
             </div>
-            <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-              {team === "bull" ? "Arguing FOR" : "Arguing AGAINST"}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                {state.speaking && (
+                  <span
+                    className="h-1.5 w-1.5 rounded-full dot-pulse"
+                    style={{ background: color }}
+                  />
+                )}
+                <span
+                  className="rounded border px-2 py-0.5 text-[10px] font-mono tracking-wider"
+                  style={{ borderColor: "var(--border-soft)", color }}
+                >
+                  R{state.round || "-"}/{totalRounds}
+                </span>
+              </div>
+              <ConfidenceBadge
+                value={state.confidence}
+                label={confidenceLabel}
+                color={color}
+              />
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {state.speaking && (
-            <span
-              className="h-1.5 w-1.5 rounded-full dot-pulse"
-              style={{ background: color }}
-            />
-          )}
-          <div className="flex flex-col items-end gap-0.5">
-            <span
-              className="rounded border px-2 py-0.5 text-[10px] font-mono tracking-wider"
-              style={{ borderColor: "var(--border-soft)", color }}
-            >
-              R{state.round || "-"}/{totalRounds}
-            </span>
-            <ConfidenceBadge value={state.confidence} label={confidenceLabel} color={color} />
+
+          {/* Body — IBM Plex Mono debate text, newest at bottom */}
+          <div className="flex-1 flex flex-col-reverse gap-3 px-4 py-4">
+            {/* Live / latest message — sits at the bottom of the flex-col-reverse */}
+            {state.speaking || state.current ? (
+              <SpeechBubble
+                key={liveBubbleKey}
+                team={team}
+                text={state.current}
+                live
+              />
+            ) : state.past.length > 0 ? (
+              <SpeechBubble
+                key={`latest-${state.past.length}`}
+                team={team}
+                text={state.past[state.past.length - 1]}
+                live
+              />
+            ) : (
+              <p className="font-mono-debate italic text-zinc-600">
+                Waiting for opening statement…
+              </p>
+            )}
+
+            {/* Older turns stacked above, fading toward the top */}
+            {(state.speaking
+              ? state.past
+              : state.past.slice(0, -1)
+            ).length > 0 && (
+              <div className="flex flex-col-reverse gap-3 opacity-40">
+                {(state.speaking
+                  ? state.past
+                  : state.past.slice(0, -1)
+                )
+                  .slice()
+                  .reverse()
+                  .map((t, i) => (
+                    <SpeechBubble
+                      key={`past-${state.past.length}-${i}`}
+                      team={team}
+                      text={t}
+                    />
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Body */}
-      <div className="flex-1 flex flex-col gap-2 px-3 py-3 min-h-[300px]">
-        {(state.speaking || state.current) && (
-          <SpeechBubble
-            key={liveBubbleKey}
-            team={team}
-            text={state.current}
-            live
-          />
-        )}
-        {!state.speaking && state.past.length > 0 && (
-          <SpeechBubble
-            key={`latest-${state.past.length}`}
-            team={team}
-            text={state.past[state.past.length - 1]}
-            live
-          />
-        )}
-
-        {state.past.length > 1 && !state.speaking && (
-          <div className="space-y-2 pt-1 opacity-50">
-            {state.past
-              .slice(0, -1)
-              .reverse()
-              .map((t, i) => (
-                <SpeechBubble
-                  key={`past-${state.past.length}-${i}`}
-                  team={team}
-                  text={t}
-                />
-              ))}
-          </div>
-        )}
-        {state.speaking && state.past.length > 0 && (
-          <div className="space-y-2 pt-1 opacity-50">
-            {state.past
-              .slice()
-              .reverse()
-              .map((t, i) => (
-                <SpeechBubble
-                  key={`past-live-${i}`}
-                  team={team}
-                  text={t}
-                />
-              ))}
-          </div>
-        )}
-
-        {!state.speaking && state.past.length === 0 && !state.current && (
-          <p className="text-xs italic text-zinc-600">
-            Waiting for opening statement…
-          </p>
-        )}
-      </div>
-    </div>
     </div>
   )
 }
@@ -370,25 +374,33 @@ function SpeechBubble({
   live?: boolean
 }) {
   const color = team === "bull" ? "var(--bull)" : "var(--bear)"
+  const glow =
+    team === "bull"
+      ? "0 8px 28px -16px rgba(247,183,49,0.55), 0 0 0 1px rgba(247,183,49,0.18)"
+      : "0 8px 28px -16px rgba(255,59,59,0.55), 0 0 0 1px rgba(255,59,59,0.18)"
   return (
     <div
-      className={`bubble-pop relative rounded-lg border px-3 py-2.5 text-sm leading-relaxed ${
-        live ? "" : "text-xs"
-      }`}
+      className="bubble-pop relative rounded-md border px-3.5 py-3"
       style={{
         borderColor: live ? color : "var(--border-soft)",
-        background: live ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.2)",
-        boxShadow: live
-          ? `0 0 0 1px ${color}22, 0 8px 28px -16px ${color}66`
-          : "none",
+        background: live
+          ? "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.3) 100%)"
+          : "rgba(0,0,0,0.22)",
+        boxShadow: live ? glow : "none",
       }}
     >
-      <p className="whitespace-pre-wrap text-zinc-100">
+      <p
+        className="font-mono-debate whitespace-pre-wrap text-zinc-100"
+        style={!live ? { fontSize: 12 } : undefined}
+      >
         {text || (
-          <span className="inline-flex items-center gap-1 text-zinc-500">
+          <span className="inline-flex items-center gap-1.5 text-zinc-500">
             <span
               className="h-1.5 w-1.5 rounded-full"
-              style={{ background: color, animation: "pulse-ring 1.4s ease-out infinite" }}
+              style={{
+                background: color,
+                animation: "pulse-ring 1.4s ease-out infinite",
+              }}
             />
             preparing argument…
           </span>

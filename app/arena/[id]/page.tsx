@@ -95,14 +95,16 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
           : "PRE-FIGHT"
   const live = arena?.status === "running"
 
+  const topicValue = queryTopic ?? arena?.topic ?? null
+
   return (
     <div className="min-h-screen flex flex-col bg-[color:var(--bg)] overflow-hidden">
       {/* MATCHUP BANNER */}
-      <header className="border-b border-[color:var(--border)] bg-black/60">
-        <div className="mx-auto max-w-7xl px-3 py-2 flex items-center gap-3">
-          {/* Left: arena + wallet */}
+      <header className="scanlines border-b border-[color:var(--border)] bg-[color:var(--bg-deep)]/85">
+        {/* Top utility row */}
+        <div className="mx-auto max-w-7xl px-4 pt-3 pb-2 flex items-center gap-3">
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+            <span className="font-ui-label text-[10px] text-[color:var(--text-mute)]">
               Arena
             </span>
             <span className="font-mono text-[11px] text-zinc-400">
@@ -110,51 +112,75 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
             </span>
             <WalletBadge address={wallet} />
           </div>
-
-          {/* Center: BULL vs BEAR */}
-          <div className="flex-1 flex items-center justify-center gap-4">
-            <Fighter team="bull" name="BULL" emoji="🐂" align="right" />
-            <div className="flex flex-col items-center">
-              <span
-                className="text-[10px] uppercase tracking-[0.3em] font-bold"
-                style={{
-                  color: live ? "var(--accent)" : "var(--text-mute)",
-                }}
-              >
-                {live && (
-                  <span
-                    className="inline-block h-1.5 w-1.5 rounded-full mr-1 align-middle dot-pulse"
-                    style={{ background: "var(--accent)" }}
-                  />
-                )}
-                {roundLabel}
-              </span>
-              <span className="text-2xl font-black text-zinc-600 leading-none tracking-tighter">
-                VS
-              </span>
-            </div>
-            <Fighter team="bear" name="BEAR" emoji="🐻" align="left" />
-          </div>
-
-          {/* Right: pot */}
-          <div className="shrink-0">
+          <div className="flex-1" />
+          <div className="shrink-0 flex items-center gap-3">
+            <span
+              className="font-ui-label text-[10px]"
+              style={{
+                color: live ? "var(--accent)" : "var(--text-mute)",
+              }}
+            >
+              {live && (
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full mr-1.5 align-middle dot-pulse"
+                  style={{ background: "var(--accent)" }}
+                />
+              )}
+              {roundLabel}
+            </span>
             <BetTotals variant="compact" />
           </div>
         </div>
 
-        {/* Topic strip */}
-        {(queryTopic || arena?.topic) && (
-          <div className="border-t border-[color:var(--border)] bg-black/40">
-            <div className="mx-auto max-w-7xl px-3 py-1.5 text-center">
-              <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 mr-2">
-                Topic
-              </span>
-              <span className="text-xs font-bold text-zinc-100">
-                {queryTopic ?? arena?.topic}
-              </span>
-            </div>
+        {/* Topic display */}
+        {topicValue && (
+          <div className="mx-auto max-w-7xl px-4 text-center">
+            <p className="font-ui-label text-[10px] text-[color:var(--text-mute)]">
+              Tonight's debate
+            </p>
+            <p className="mt-0.5 font-mono italic text-sm sm:text-base text-zinc-100 underline underline-offset-4 decoration-[color:var(--text-mute)]/40">
+              {topicValue}
+            </p>
           </div>
         )}
+
+        {/* Massive matchup headline */}
+        <div className="mx-auto max-w-7xl px-4 pt-2 pb-3 flex items-center justify-center">
+          <h1 className="font-display text-5xl sm:text-7xl md:text-8xl leading-[0.92] tracking-tight flex items-baseline gap-3 sm:gap-5">
+            <span
+              style={{
+                color: "var(--bull)",
+                textShadow:
+                  "0 0 14px rgba(247,183,49,0.4), 0 0 42px rgba(247,183,49,0.2)",
+              }}
+            >
+              AGENT BULL
+            </span>
+            <span
+              className="inline-flex items-center justify-center text-3xl sm:text-5xl md:text-6xl"
+              style={{
+                background:
+                  "linear-gradient(90deg, var(--bull) 0%, #ffffff 50%, var(--bear) 100%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                filter:
+                  "drop-shadow(0 0 14px rgba(255,255,255,0.25))",
+              }}
+            >
+              🆚
+            </span>
+            <span
+              style={{
+                color: "var(--bear)",
+                textShadow:
+                  "0 0 14px rgba(255,59,59,0.4), 0 0 42px rgba(255,59,59,0.2)",
+              }}
+            >
+              AGENT BEAR
+            </span>
+          </h1>
+        </div>
       </header>
 
       {/* MAIN — lobby phase first, then the live debate */}

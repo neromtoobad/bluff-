@@ -7,80 +7,62 @@ export default function HypeMeter() {
   const a = Number(totals?.A.amount ?? 0)
   const b = Number(totals?.B.amount ?? 0)
   const sum = a + b
-  // 50/50 split when nothing is bet yet.
   const bullPct = sum > 0 ? (a / sum) * 100 : 50
   const bearPct = 100 - bullPct
-  const tilt =
-    sum === 0
-      ? "even"
-      : bullPct > 60
-        ? "bull"
-        : bearPct > 60
-          ? "bear"
-          : "even"
 
   return (
-    <div className="my-3">
-      <div className="flex items-baseline justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-            Crowd
-          </span>
-          {tilt === "bull" && (
-            <span
-              className="text-[10px] uppercase tracking-widest font-bold"
-              style={{ color: "var(--bull)" }}
-            >
-              🐂 tilting bull
-            </span>
-          )}
-          {tilt === "bear" && (
-            <span
-              className="text-[10px] uppercase tracking-widest font-bold"
-              style={{ color: "var(--bear)" }}
-            >
-              🐻 tilting bear
-            </span>
-          )}
-          {tilt === "even" && sum > 0 && (
-            <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-              dead split
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono">
-          <span style={{ color: "var(--bull)" }}>
-            {bullPct.toFixed(0)}%
-          </span>
-          <span className="text-zinc-700">|</span>
-          <span style={{ color: "var(--bear)" }}>
-            {bearPct.toFixed(0)}%
-          </span>
-        </div>
+    <div className="relative my-4 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-card)]/60 px-4 py-3">
+      <p className="absolute -top-2 left-4 px-2 bg-[color:var(--bg)] font-ui-label text-[10px] text-[color:var(--text-mute)]">
+        Crowd
+      </p>
+
+      {/* Scoreboard percentages */}
+      <div className="flex items-center justify-between mb-2">
+        <span
+          className="font-display tabular-nums leading-none"
+          style={{
+            color: "var(--bull)",
+            fontSize: "clamp(34px, 5vw, 56px)",
+            textShadow: "0 0 18px rgba(247,183,49,0.4)",
+          }}
+        >
+          {bullPct.toFixed(0)}%
+        </span>
+        <span
+          className="font-ui-label text-[10px] text-[color:var(--text-mute)]"
+          style={{ letterSpacing: "0.3em" }}
+        >
+          {sum === 0
+            ? "EVEN"
+            : bullPct > 60
+              ? "BULL HEAVY"
+              : bearPct > 60
+                ? "BEAR HEAVY"
+                : "TIGHT"}
+        </span>
+        <span
+          className="font-display tabular-nums leading-none"
+          style={{
+            color: "var(--bear)",
+            fontSize: "clamp(34px, 5vw, 56px)",
+            textShadow: "0 0 18px rgba(255,59,59,0.4)",
+          }}
+        >
+          {bearPct.toFixed(0)}%
+        </span>
       </div>
-      <div className="relative h-2 rounded-full overflow-hidden bg-black/60 border border-[color:var(--border)]">
-        {/* Bull fill — anchors left */}
+
+      {/* Liquid fill bar */}
+      <div className="relative h-3 rounded-full overflow-hidden bg-black/70 border border-[color:var(--border)]">
         <div
-          className="absolute inset-y-0 left-0 transition-[width] duration-700 ease-out"
-          style={{
-            width: `${bullPct}%`,
-            background:
-              "linear-gradient(90deg, var(--bull) 0%, rgba(0,255,136,0.6) 100%)",
-            boxShadow: "0 0 12px rgba(0, 255, 136, 0.35)",
-          }}
+          className="absolute inset-y-0 left-0 liquid-bull transition-[width] duration-1000 ease-out"
+          style={{ width: `${bullPct}%` }}
         />
-        {/* Bear fill — anchors right */}
         <div
-          className="absolute inset-y-0 right-0 transition-[width] duration-700 ease-out"
-          style={{
-            width: `${bearPct}%`,
-            background:
-              "linear-gradient(270deg, var(--bear) 0%, rgba(255,51,85,0.6) 100%)",
-            boxShadow: "0 0 12px rgba(255, 51, 85, 0.35)",
-          }}
+          className="absolute inset-y-0 right-0 liquid-bear transition-[width] duration-1000 ease-out"
+          style={{ width: `${bearPct}%` }}
         />
-        {/* Center seam */}
-        <div className="absolute inset-y-0 left-1/2 w-px bg-zinc-700/60" />
+        <div className="absolute inset-y-0 left-1/2 w-px bg-white/30" />
       </div>
     </div>
   )
