@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { ROUNDS, systemPromptFor, type Turn } from "@/lib/agents"
+import { AGENT_STARTING_BALANCE_USDC, RESEARCH_COST_USDC } from "@/lib/x402"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -11,9 +12,19 @@ function sseChunk(event: string, data: unknown): Uint8Array {
   return new TextEncoder().encode(payload)
 }
 
-function userPromptFor(side: "A" | "B", topic: string, history: Turn[], round: number): string {
+function userPromptFor(
+  side: "A" | "B",
+  topic: string,
+  history: Turn[],
+  round: number,
+  insight: string | null,
+): string {
+  const research = insight
+    ? `Fresh research you just paid $${RESEARCH_COST_USDC.toFixed(3)} USDC to fetch:\n"${insight}"\nUse it if relevant.\n\n`
+    : ""
+
   if (history.length === 0) {
-    return `Round ${round} of ${ROUNDS}. Open the debate on "${topic}". Give your strongest argument now.`
+    return `${research}Round ${round} of ${ROUNDS}. Open the debate on "${topic}". Give your strongest argument now.`
   }
   const transcript = history
     .map((t) => `Round ${t.round} — Agent ${t.agent}: ${t.text}`)
@@ -21,15 +32,36 @@ function userPromptFor(side: "A" | "B", topic: string, history: Turn[], round: n
   return [
     `Debate so far:\n\n${transcript}`,
     ``,
-    `Round ${round} of ${ROUNDS}. You are Agent ${side}. Respond now — rebut the latest point and advance your case.`,
+    `${research}Round ${round} of ${ROUNDS}. You are Agent ${side}. Respond now — rebut the latest point and advance your case.`,
   ].join("\n")
 }
 
+async function fetchResearch(
+  origin: string,
+  topic: string,
+  agent: "A" | "B",
+  round: number,
+): Promise<{ insight: string; cost: number } | null> {
+  try {
+    const res = await fetch(`${origin}/api/research`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, agent, round }),
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    return (await res.json()) as { insight: string; cost: number }
+  } catch {
+    return null
+  }
+}
+
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
+  const url = new URL(req.url)
   const topic =
-    searchParams.get("topic") ??
+    url.searchParams.get("topic") ??
     "Stablecoins will overtake traditional payment rails within 5 years"
+  const origin = url.origin
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -41,11 +73,19 @@ export async function GET(req: Request) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const history: Turn[] = []
+      const balances: Record<"A" | "B", number> = {
+        A: AGENT_STARTING_BALANCE_USDC,
+        B: AGENT_STARTING_BALANCE_USDC,
+      }
       const send = (event: string, data: unknown) =>
         controller.enqueue(sseChunk(event, data))
 
       try {
         send("start", { topic, rounds: ROUNDS })
+        send("balances", {
+          A: balances.A.toFixed(3),
+          B: balances.B.toFixed(3),
+        })
 
         for (let round = 1; round <= ROUNDS; round++) {
           send("round", { round, of: ROUNDS })
@@ -53,7 +93,24 @@ export async function GET(req: Request) {
           for (const side of ["A", "B"] as const) {
             send("turn_start", { agent: side, round })
 
-            const userPrompt = userPromptFor(side, topic, history, round)
+            // Pull research once per round, deduct from balance.
+            let insight: string | null = null
+            if (balances[side] >= RESEARCH_COST_USDC) {
+              const r = await fetchResearch(origin, topic, side, round)
+              if (r) {
+                balances[side] = Math.max(0, balances[side] - r.cost)
+                insight = r.insight
+                send("research", {
+                  agent: side,
+                  round,
+                  insight: r.insight,
+                  cost: r.cost.toFixed(3),
+                  balance: balances[side].toFixed(3),
+                })
+              }
+            }
+
+            const userPrompt = userPromptFor(side, topic, history, round, insight)
             let buffered = ""
 
             const turnStream = client.messages.stream({
@@ -79,7 +136,10 @@ export async function GET(req: Request) {
           }
         }
 
-        send("done", { rounds: ROUNDS })
+        send("done", {
+          rounds: ROUNDS,
+          balances: { A: balances.A.toFixed(3), B: balances.B.toFixed(3) },
+        })
       } catch (err: any) {
         send("error", { message: err?.message ?? "debate failed" })
       } finally {
