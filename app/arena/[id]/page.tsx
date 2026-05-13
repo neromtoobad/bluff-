@@ -8,6 +8,7 @@ import WalletBadge from "@/components/WalletBadge"
 import BetTotals from "@/components/BetTotals"
 import BettingPanel from "@/components/BettingPanel"
 import AgentFeed from "@/components/AgentFeed"
+import Lobby from "@/components/Lobby"
 import ResearchTicker from "@/components/ResearchTicker"
 import RoundIntro from "@/components/RoundIntro"
 import ScoreBoard from "@/components/ScoreBoard"
@@ -27,6 +28,10 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
   const [wallet, setWallet] = useState<string | null>(null)
   const [arena, setArena] = useState<ArenaState | null>(null)
   const [introRound, setIntroRound] = useState<number | null>(null)
+  // 'lobby' → countdown + open betting; 'live' → debate streams + arena UI.
+  // If the server already has a debate running/done when we land, skip lobby.
+  const [phase, setPhase] = useState<"lobby" | "live">("lobby")
+  const [phaseDecided, setPhaseDecided] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -45,6 +50,14 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
       clearInterval(id)
     }
   }, [])
+
+  // Decide lobby vs live once we have the first server snapshot. If a
+  // debate is already running/judging/done, skip the lobby.
+  useEffect(() => {
+    if (phaseDecided || !arena) return
+    if (arena.status !== "idle") setPhase("live")
+    setPhaseDecided(true)
+  }, [arena, phaseDecided])
 
   if (!wallet) {
     return (
@@ -144,20 +157,28 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
         )}
       </header>
 
-      {/* MAIN */}
-      <main className="flex-1 mx-auto w-full max-w-7xl px-3 py-3 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
-        <section className="min-w-0">
-          <AgentFeed
-            topic={queryTopic ?? undefined}
-            onRoundChange={(r) => setIntroRound(r)}
-          />
-        </section>
+      {/* MAIN — lobby phase first, then the live debate */}
+      {phase === "lobby" ? (
+        <Lobby
+          topic={queryTopic ?? arena?.topic ?? "TBD"}
+          walletAddress={wallet}
+          onStart={() => setPhase("live")}
+        />
+      ) : (
+        <main className="flex-1 mx-auto w-full max-w-7xl px-3 py-3 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3">
+          <section className="min-w-0">
+            <AgentFeed
+              topic={queryTopic ?? undefined}
+              onRoundChange={(r) => setIntroRound(r)}
+            />
+          </section>
 
-        <aside className="space-y-3">
-          <BetTotals variant="panel" />
-          <BettingPanel walletAddress={wallet} />
-        </aside>
-      </main>
+          <aside className="space-y-3">
+            <BetTotals variant="panel" />
+            <BettingPanel walletAddress={wallet} />
+          </aside>
+        </main>
+      )}
 
       {/* TICKER */}
       <footer className="sticky bottom-0 z-20">

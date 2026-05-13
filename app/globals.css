@@ -162,3 +162,21 @@ body {
 .round-backdrop-in {
   animation: round-backdrop 1500ms ease-out forwards;
 }
+
+@keyframes neon-blink {
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow:
+      0 0 12px rgba(0, 255, 136, 0.65),
+      0 0 28px rgba(0, 255, 136, 0.35);
+  }
+  50% {
+    opacity: 0.55;
+    text-shadow: 0 0 6px rgba(0, 255, 136, 0.25);
+  }
+}
+
+.neon-blink {
+  animation: neon-blink 1.1s ease-in-out infinite;
+}

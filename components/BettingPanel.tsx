@@ -273,12 +273,26 @@ export default function BettingPanel({ walletAddress }: Props) {
   if (bettingLocked) {
     return (
       <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4">
-        <div className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-          Betting closed
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+            Betting
+          </span>
+          <span
+            className="rounded border px-2 py-0.5 text-[9px] font-black tracking-[0.2em] uppercase"
+            style={{
+              borderColor: "var(--bear)",
+              color: "var(--bear)",
+              background: "rgba(255, 51, 85, 0.08)",
+            }}
+          >
+            Betting closed
+          </span>
         </div>
-        <p className="mt-2 text-sm text-zinc-300">
-          The fight is past round {BETTING_LOCKS_AT_ROUND - 1}. Lines are
-          locked.
+        <p className="mt-3 text-sm font-bold text-zinc-100">
+          Watch only — betting closed
+        </p>
+        <p className="mt-1 text-xs text-zinc-400">
+          The fight is past round {BETTING_LOCKS_AT_ROUND - 1}. Lines are locked.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded border border-[color:var(--border-soft)] bg-black/40 px-2 py-1.5">
