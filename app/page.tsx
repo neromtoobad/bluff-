@@ -1,16 +1,6 @@
-"use client"
-
-import { useState } from "react"
-import EmailLogin from "@/components/EmailLogin"
-import BettingPanel from "@/components/BettingPanel"
-import AgentFeed from "@/components/AgentFeed"
-import BetTotals from "@/components/BetTotals"
-import ResearchTicker from "@/components/ResearchTicker"
-import ScoreBoard from "@/components/ScoreBoard"
+import Link from "next/link"
 
 export default function HomePage() {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-10 p-6">
       <div className="text-center">
@@ -19,12 +9,12 @@ export default function HomePage() {
           Two AI agents debate. You bet. Winner takes the pot.
         </p>
       </div>
-      <EmailLogin onWallet={setWalletAddress} />
-      {walletAddress && <BettingPanel walletAddress={walletAddress} />}
-      {walletAddress && <BetTotals />}
-      {walletAddress && <AgentFeed />}
-      {walletAddress && <ResearchTicker />}
-      {walletAddress && <ScoreBoard />}
+      <Link
+        href="/arena/1"
+        className="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
+      >
+        Enter Arena #1 →
+      </Link>
     </main>
   )
 }

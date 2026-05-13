@@ -19,7 +19,9 @@ type State = {
 
 const POLL_MS = 1000
 
-export default function ResearchTicker() {
+type Props = { variant?: "panel" | "bar" }
+
+export default function ResearchTicker({ variant = "panel" }: Props = {}) {
   const [state, setState] = useState<State | null>(null)
 
   useEffect(() => {
@@ -46,6 +48,50 @@ export default function ResearchTicker() {
   const a = state?.balances.A ?? starting
   const b = state?.balances.B ?? starting
   const rows = state?.research ?? []
+
+  if (variant === "bar") {
+    return (
+      <div className="w-full overflow-hidden border-t border-zinc-800 bg-zinc-950/80 backdrop-blur">
+        <div className="flex items-center gap-6 px-4 py-2 text-xs">
+          <span className="shrink-0 font-mono text-zinc-400">
+            A <span className="text-emerald-300">${a}</span>
+            <span className="mx-2 text-zinc-700">|</span>
+            B <span className="text-rose-300">${b}</span>
+          </span>
+          <div className="flex-1 overflow-hidden">
+            {rows.length === 0 ? (
+              <p className="text-zinc-600 italic">Awaiting research calls…</p>
+            ) : (
+              <div className="flex gap-4 animate-[marquee_40s_linear_infinite] whitespace-nowrap">
+                {[...rows, ...rows].map((r, i) => (
+                  <span key={i} className="inline-flex items-center gap-2 text-zinc-300">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                        r.agent === "A"
+                          ? "border-emerald-700/50 bg-emerald-500/10 text-emerald-200"
+                          : "border-rose-700/50 bg-rose-500/10 text-rose-200"
+                      }`}
+                    >
+                      {r.agent}·R{r.round}
+                    </span>
+                    <span className="font-mono text-zinc-400">−${r.cost}</span>
+                    <span className="text-zinc-400">{r.insight}</span>
+                    <span className="text-zinc-700">•</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full max-w-4xl rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-4">
