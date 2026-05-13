@@ -21,6 +21,8 @@ export async function GET() {
       insight: r.insight,
       at: r.at,
     })),
+    transcript: s.transcript,
+    verdict: s.verdict,
     startedAt: s.startedAt,
     updatedAt: s.updatedAt,
   })

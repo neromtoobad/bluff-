@@ -6,6 +6,7 @@ import BettingPanel from "@/components/BettingPanel"
 import AgentFeed from "@/components/AgentFeed"
 import BetTotals from "@/components/BetTotals"
 import ResearchTicker from "@/components/ResearchTicker"
+import ScoreBoard from "@/components/ScoreBoard"
 
 export default function HomePage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
@@ -23,6 +24,7 @@ export default function HomePage() {
       {walletAddress && <BetTotals />}
       {walletAddress && <AgentFeed />}
       {walletAddress && <ResearchTicker />}
+      {walletAddress && <ScoreBoard />}
     </main>
   )
 }

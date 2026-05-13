@@ -4,8 +4,10 @@ import { AGENT_STARTING_BALANCE_USDC, RESEARCH_COST_USDC } from "@/lib/x402"
 import {
   finishDebate,
   recordResearch,
+  recordTurn,
   resetDebate,
   setRound,
+  setStatus,
 } from "@/lib/debate-state"
 
 export const runtime = "nodejs"
@@ -145,16 +147,40 @@ export async function GET(req: Request) {
               }
             }
 
-            history.push({ agent: side, round, text: buffered })
-            send("turn_end", { agent: side, round, text: buffered })
+            const turn = { agent: side, round, text: buffered }
+            history.push(turn)
+            recordTurn(turn)
+            send("turn_end", turn)
           }
         }
 
-        finishDebate("done")
         send("done", {
           rounds: ROUNDS,
           balances: { A: balances.A.toFixed(3), B: balances.B.toFixed(3) },
         })
+
+        // Auto-invoke the judge with the full transcript.
+        setStatus("judging")
+        send("judging", {})
+        try {
+          const judgeRes = await fetch(`${origin}/api/judge`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topic, transcript: history }),
+            cache: "no-store",
+          })
+          if (judgeRes.ok) {
+            const verdict = await judgeRes.json()
+            send("verdict", verdict)
+          } else {
+            const errText = await judgeRes.text()
+            send("error", { message: `judge failed: ${errText}` })
+            finishDebate("error")
+          }
+        } catch (e: any) {
+          send("error", { message: e?.message ?? "judge call failed" })
+          finishDebate("error")
+        }
       } catch (err: any) {
         finishDebate("error")
         send("error", { message: err?.message ?? "debate failed" })
