@@ -67,3 +67,53 @@ body {
   animation: ticker-scroll 16s linear infinite;
   will-change: transform;
 }
+
+@keyframes flash-bull {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(0, 255, 136, 0),
+      inset 0 0 0 0 rgba(0, 255, 136, 0);
+    background: rgba(0, 255, 136, 0);
+  }
+  20% {
+    box-shadow:
+      0 0 0 14px rgba(0, 255, 136, 0.55),
+      inset 0 0 60px rgba(0, 255, 136, 0.45);
+    background: rgba(0, 255, 136, 0.22);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(0, 255, 136, 0),
+      inset 0 0 0 rgba(0, 255, 136, 0);
+    background: rgba(0, 255, 136, 0.12);
+  }
+}
+
+@keyframes flash-bear {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(255, 51, 85, 0),
+      inset 0 0 0 0 rgba(255, 51, 85, 0);
+    background: rgba(255, 51, 85, 0);
+  }
+  20% {
+    box-shadow:
+      0 0 0 14px rgba(255, 51, 85, 0.55),
+      inset 0 0 60px rgba(255, 51, 85, 0.45);
+    background: rgba(255, 51, 85, 0.22);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 51, 85, 0),
+      inset 0 0 0 rgba(255, 51, 85, 0);
+    background: rgba(255, 51, 85, 0.12);
+  }
+}
+
+.flash-bull {
+  animation: flash-bull 1100ms ease-out 1;
+}
+
+.flash-bear {
+  animation: flash-bear 1100ms ease-out 1;
+}
