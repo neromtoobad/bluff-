@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import EmailLogin from "@/components/EmailLogin"
 import WalletBadge from "@/components/WalletBadge"
 import BetTotals from "@/components/BetTotals"
@@ -19,6 +20,8 @@ type ArenaState = {
 const TOTAL_ROUNDS = 4
 
 export default function ArenaPage({ params }: { params: { id: string } }) {
+  const searchParams = useSearchParams()
+  const queryTopic = searchParams.get("topic")
   const [wallet, setWallet] = useState<string | null>(null)
   const [arena, setArena] = useState<ArenaState | null>(null)
 
@@ -97,12 +100,15 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
       {/* MAIN */}
       <div className="flex-1 mx-auto w-full max-w-7xl px-4 py-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         <section className="min-w-0">
-          {arena?.topic && (
+          {(queryTopic || arena?.topic) && (
             <p className="mb-4 text-sm text-zinc-400">
-              Topic: <span className="text-zinc-100">{arena.topic}</span>
+              Topic:{" "}
+              <span className="text-zinc-100 font-semibold">
+                {queryTopic ?? arena?.topic}
+              </span>
             </p>
           )}
-          <AgentFeed />
+          <AgentFeed topic={queryTopic ?? undefined} />
         </section>
 
         <aside className="space-y-4">
