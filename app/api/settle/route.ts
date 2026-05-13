@@ -6,21 +6,39 @@ import {
   setSettlement,
   updatePayout,
 } from "@/lib/debate-state"
-import { getKit, type SendResult } from "@/lib/arc"
+import { getKit } from "@/lib/arc"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+const EXPLORER_BASE =
+  process.env.NEXT_PUBLIC_ARC_EXPLORER_URL ?? "https://explorer.arc.network"
+
+function explorerLink(txHash: string): string {
+  return `${EXPLORER_BASE}/tx/${txHash}`
+}
+
+type SpendResult = {
+  txHash?: string
+  explorerUrl?: string
+  recipientAddress?: string
+  destinationChain?: string
+  state?: string
+}
+
 // TODO: replace with ERC-8183 contract — payouts should settle out of
-// an on-chain escrow once the contract is deployed. For now, the
-// treasury wallet pays winners directly via kit.send().
+// an on-chain escrow contract once it's deployed. For now, the treasury
+// wallet doubles as the escrow address and pays winners directly.
 export async function POST() {
   const verdict = debateState.verdict
   if (!verdict) {
     return NextResponse.json({ error: "no verdict yet" }, { status: 400 })
   }
   if (debateState.settlement === "running") {
-    return NextResponse.json({ error: "settlement already running" }, { status: 409 })
+    return NextResponse.json(
+      { error: "settlement already running" },
+      { status: 409 },
+    )
   }
   if (debateState.settlement === "done") {
     return NextResponse.json({
@@ -42,7 +60,7 @@ export async function POST() {
 
   setSettlement("running")
 
-  // Pre-record each payout in pending state so the UI can show progress.
+  // Pre-record each payout in pending state so the UI shows progress.
   const planned = winners.map((b) => {
     const share = Number(b.amount) / winningStake
     const payoutNum = totalPot * share
@@ -56,35 +74,58 @@ export async function POST() {
     return { bet: b, entry, payoutAmount: payoutNum.toFixed(2) }
   })
 
-  // TODO: replace with ERC-8183 contract — single settlement call instead
-  // of a per-winner kit.send loop.
   let anyFailed = false
   try {
     const { kit, adapter } = getKit()
     for (const p of planned) {
       try {
-        const result = (await kit.send({
-          from: { adapter, chain: "Arc_Testnet" },
-          to: p.bet.walletAddress,
+        // Real onchain transfer from escrow (= treasury) → winner.
+        const result = (await kit.unifiedBalance.spend({
           amount: p.payoutAmount,
-          token: "USDC",
-        })) as SendResult
+          from: { adapter },
+          to: {
+            adapter,
+            chain: "Arc_Testnet",
+            recipientAddress: p.bet.walletAddress,
+          },
+        })) as SpendResult
+
+        if (!result?.txHash) {
+          anyFailed = true
+          updatePayout(p.bet.walletAddress, {
+            state: "failed",
+            error: "no txHash returned",
+          })
+          continue
+        }
+        if (result.state && result.state !== "success") {
+          anyFailed = true
+          updatePayout(p.bet.walletAddress, {
+            state: "failed",
+            error: `state=${result.state}`,
+            txHash: result.txHash,
+            explorerUrl: result.explorerUrl ?? explorerLink(result.txHash),
+          })
+          continue
+        }
         updatePayout(p.bet.walletAddress, {
-          state: result.state === "success" ? "success" : "failed",
+          state: "success",
           txHash: result.txHash,
-          explorerUrl: result.explorerUrl,
+          explorerUrl: result.explorerUrl ?? explorerLink(result.txHash),
         })
-        if (result.state !== "success") anyFailed = true
       } catch (err: any) {
         anyFailed = true
+        const msg = String(err?.message ?? err)
         updatePayout(p.bet.walletAddress, {
           state: "failed",
-          error: err?.message ?? "send failed",
+          error: /insufficient|balance|exceeds/i.test(msg)
+            ? "escrow has insufficient USDC"
+            : msg,
         })
       }
     }
   } catch (err: any) {
-    // getKit() failed (missing treasury key, etc.) — mark all pending as failed.
+    // getKit() failed (missing treasury key) — all pending payouts fail.
     for (const p of planned) {
       updatePayout(p.bet.walletAddress, {
         state: "failed",
