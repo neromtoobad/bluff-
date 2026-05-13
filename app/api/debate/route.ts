@@ -1,6 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { ROUNDS, systemPromptFor, type Turn } from "@/lib/agents"
 import { AGENT_STARTING_BALANCE_USDC, RESEARCH_COST_USDC } from "@/lib/x402"
+import {
+  finishDebate,
+  recordResearch,
+  resetDebate,
+  setRound,
+} from "@/lib/debate-state"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -81,6 +87,7 @@ export async function GET(req: Request) {
         controller.enqueue(sseChunk(event, data))
 
       try {
+        resetDebate(topic)
         send("start", { topic, rounds: ROUNDS })
         send("balances", {
           A: balances.A.toFixed(3),
@@ -88,6 +95,7 @@ export async function GET(req: Request) {
         })
 
         for (let round = 1; round <= ROUNDS; round++) {
+          setRound(round)
           send("round", { round, of: ROUNDS })
 
           for (const side of ["A", "B"] as const) {
@@ -100,6 +108,12 @@ export async function GET(req: Request) {
               if (r) {
                 balances[side] = Math.max(0, balances[side] - r.cost)
                 insight = r.insight
+                recordResearch({
+                  agent: side,
+                  round,
+                  cost: r.cost,
+                  insight: r.insight,
+                })
                 send("research", {
                   agent: side,
                   round,
@@ -136,11 +150,13 @@ export async function GET(req: Request) {
           }
         }
 
+        finishDebate("done")
         send("done", {
           rounds: ROUNDS,
           balances: { A: balances.A.toFixed(3), B: balances.B.toFixed(3) },
         })
       } catch (err: any) {
+        finishDebate("error")
         send("error", { message: err?.message ?? "debate failed" })
       } finally {
         controller.close()
