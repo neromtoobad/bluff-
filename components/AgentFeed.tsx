@@ -14,6 +14,7 @@ type AgentState = {
   current: string // the in-flight streaming text
   past: string[] // completed historical turns, newest last
   speaking: boolean
+  thinking: boolean // true during inter-turn pause before this agent speaks
   round: number
   confidence: number // 0-100, recomputed on each turn_end
 }
@@ -23,6 +24,7 @@ const initial: AgentState = {
   current: "",
   past: [],
   speaking: false,
+  thinking: false,
   round: 0,
   confidence: 0,
 }
@@ -104,13 +106,28 @@ export default function AgentFeed({
       onRoundRef.current?.(round)
     })
 
+    es.addEventListener("thinking", (e) => {
+      const { agent, round } = JSON.parse((e as MessageEvent).data) as {
+        agent: "A" | "B"
+        round: number
+      }
+      const setFn = agent === "A" ? setA : setB
+      setFn((s) => ({ ...s, thinking: true, round }))
+    })
+
     es.addEventListener("turn_start", (e) => {
       const { agent, round } = JSON.parse((e as MessageEvent).data) as {
         agent: "A" | "B"
         round: number
       }
       const setFn = agent === "A" ? setA : setB
-      setFn((s) => ({ ...s, speaking: true, current: "", round }))
+      setFn((s) => ({
+        ...s,
+        speaking: true,
+        thinking: false,
+        current: "",
+        round,
+      }))
     })
 
     es.addEventListener("delta", (e) => {
@@ -285,7 +302,9 @@ function AgentCard({
           {/* Body — IBM Plex Mono debate text, newest at bottom */}
           <div className="flex-1 flex flex-col-reverse gap-3 px-4 py-4">
             {/* Live / latest message — sits at the bottom of the flex-col-reverse */}
-            {state.speaking || state.current ? (
+            {state.thinking && !state.speaking ? (
+              <ThinkingPlaceholder team={team} name={name} />
+            ) : state.speaking || state.current ? (
               <SpeechBubble
                 key={liveBubbleKey}
                 team={team}
@@ -361,6 +380,40 @@ function ConfidenceBadge({
         {label}
       </span>
     </span>
+  )
+}
+
+function ThinkingPlaceholder({
+  team,
+  name,
+}: {
+  team: "bull" | "bear"
+  name: string
+}) {
+  const color = team === "bull" ? "var(--bull)" : "var(--bear)"
+  return (
+    <div
+      className="bubble-pop rounded-md border px-3.5 py-3 flex items-center gap-2"
+      style={{
+        borderColor: color,
+        background:
+          "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.3) 100%)",
+      }}
+    >
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{
+          background: color,
+          animation: "pulse-ring 1s ease-out infinite",
+        }}
+      />
+      <p
+        className="font-ui-label text-[11px] tracking-[0.25em]"
+        style={{ color }}
+      >
+        AGENT {name} IS THINKING…
+      </p>
+    </div>
   )
 }
 

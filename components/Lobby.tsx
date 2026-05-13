@@ -29,7 +29,7 @@ const BEAR_STATS: FighterStats = {
 export default function Lobby({
   topic,
   walletAddress,
-  countdownSeconds = 10,
+  countdownSeconds = 15,
   onStart,
 }: Props) {
   const [secs, setSecs] = useState(countdownSeconds)
@@ -87,22 +87,22 @@ export default function Lobby({
 
         {/* Countdown */}
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 text-center">
-          <p className="text-[10px] uppercase tracking-[0.4em] text-zinc-500">
-            Debate starts in
+          <p className="font-ui-label text-[10px] text-zinc-500">
+            Place your bet — debate starts in
           </p>
           <p
-            className="mt-1 font-black tabular-nums leading-none"
+            className="mt-1 font-display tabular-nums leading-none"
             style={{
               fontSize: "clamp(48px, 8vw, 96px)",
               color: urgent ? "var(--bear)" : "var(--accent)",
               textShadow: urgent
-                ? "0 0 28px rgba(255, 51, 85, 0.4)"
-                : "0 0 28px rgba(0, 255, 136, 0.35)",
+                ? "0 0 28px rgba(255, 59, 59, 0.45)"
+                : "0 0 28px rgba(247, 183, 49, 0.45)",
             }}
           >
-            {secs}
+            {secs}s
           </p>
-          <p className="mt-2 text-[10px] uppercase tracking-[0.4em] text-zinc-600">
+          <p className="mt-2 font-ui-label text-[10px] text-zinc-600">
             {urgent ? "Get your bets in" : "seconds"}
           </p>
         </div>
@@ -110,7 +110,10 @@ export default function Lobby({
 
       <aside className="space-y-3">
         <BetTotals variant="panel" />
-        <BettingPanel walletAddress={walletAddress} />
+        <BettingPanel
+          walletAddress={walletAddress}
+          countdownSeconds={secs}
+        />
       </aside>
     </main>
   )

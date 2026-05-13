@@ -8,6 +8,12 @@ type Side = "A" | "B"
 
 type Props = {
   walletAddress: string
+  // When the betting panel is rendered inside the Lobby, the host passes
+  // its countdown so the panel can show "debate starts in N…". Once the
+  // countdown hits 0 the host transitions to live and the debate stream
+  // flips server status off "idle" — the panel switches to the LOCKED
+  // view automatically via the existing /api/debate/state poll.
+  countdownSeconds?: number | null
 }
 
 type Placed = { side: Side; amount: string; oddsAtLock?: string }
@@ -23,7 +29,6 @@ type DebateState = {
 }
 
 const QUICK_AMOUNTS = ["1", "5", "10", "25"]
-const BETTING_LOCKS_AT_ROUND = 3
 
 function odds(side: number, total: number): string {
   if (side <= 0 || total <= 0) return "—"
@@ -54,7 +59,10 @@ function useDebateRound(): DebateState | null {
   return s
 }
 
-export default function BettingPanel({ walletAddress }: Props) {
+export default function BettingPanel({
+  walletAddress,
+  countdownSeconds,
+}: Props) {
   const totals = usePotTotals()
   const debate = useDebateRound()
   const [side, setSide] = useState<Side | null>(null)
@@ -84,16 +92,18 @@ export default function BettingPanel({ walletAddress }: Props) {
   const bullOdds = odds(aAmount, pot)
   const bearOdds = odds(bAmount, pot)
 
-  const currentRound = debate?.round ?? 0
   const verdict = debate?.verdict ?? null
-  const bettingLocked = currentRound >= BETTING_LOCKS_AT_ROUND
-  const roundsUntilLock = Math.max(0, BETTING_LOCKS_AT_ROUND - currentRound)
+  const status = debate?.status ?? "idle"
+  // Betting is open ONLY in lobby/idle state. The moment the debate stream
+  // resetDebate()s the server status to 'running' (or anything past), the
+  // panel locks.
+  const bettingLocked = status !== "idle"
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     if (bettingLocked) {
-      setError(`Betting closed at round ${BETTING_LOCKS_AT_ROUND}`)
+      setError("Betting closed — the debate has started")
       return
     }
     if (!side) {
@@ -269,12 +279,25 @@ export default function BettingPanel({ walletAddress }: Props) {
     )
   }
 
-  // --- BETTING CLOSED (round >= 3) ---
+  // --- BETTING CLOSED (debate has started) ---
   if (bettingLocked) {
     return (
-      <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+      <div className="relative rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] p-4">
+        {/* "BETTING CLOSED" diagonal overlay */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <span
+            className="font-display text-3xl tracking-[0.15em] opacity-25"
+            style={{
+              color: "var(--bear)",
+              transform: "rotate(-10deg)",
+              textShadow: "0 0 18px rgba(255,59,59,0.45)",
+            }}
+          >
+            BETTING CLOSED
+          </span>
+        </div>
+        <div className="relative flex items-center justify-between">
+          <span className="font-ui-label text-[10px] text-zinc-500">
             Betting
           </span>
           <span
@@ -282,17 +305,17 @@ export default function BettingPanel({ walletAddress }: Props) {
             style={{
               borderColor: "var(--bear)",
               color: "var(--bear)",
-              background: "rgba(255, 51, 85, 0.08)",
+              background: "rgba(255, 59, 59, 0.08)",
             }}
           >
-            Betting closed
+            LOCKED
           </span>
         </div>
-        <p className="mt-3 text-sm font-bold text-zinc-100">
+        <p className="relative mt-3 text-sm font-bold text-zinc-100">
           Watch only — betting closed
         </p>
-        <p className="mt-1 text-xs text-zinc-400">
-          The fight is past round {BETTING_LOCKS_AT_ROUND - 1}. Lines are locked.
+        <p className="relative mt-1 text-xs text-zinc-400">
+          The debate is live. Lines are locked until settlement.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded border border-[color:var(--border-soft)] bg-black/40 px-2 py-1.5">
@@ -327,18 +350,40 @@ export default function BettingPanel({ walletAddress }: Props) {
         </span>
       </div>
 
-      {/* Lock countdown */}
-      <div className="rounded-md border border-amber-700/40 bg-amber-500/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-amber-300">
-        Betting closes in round {BETTING_LOCKS_AT_ROUND}
-        {currentRound > 0 && roundsUntilLock > 0 && (
-          <span className="ml-2 normal-case tracking-normal text-amber-200/80">
-            ·{" "}
-            {roundsUntilLock === 1
-              ? "next round"
-              : `${roundsUntilLock} rounds left`}
+      {/* Lobby countdown — only shown while the host (Lobby) is ticking */}
+      {typeof countdownSeconds === "number" && countdownSeconds > 0 && (
+        <div
+          className={`rounded-md border px-3 py-2 flex items-center justify-between gap-3 ${
+            countdownSeconds <= 5
+              ? "border-[color:var(--bear)]/50 bg-[color:var(--bear)]/10"
+              : "border-[color:var(--accent)]/50 bg-[color:var(--accent-soft)]"
+          }`}
+        >
+          <div>
+            <p className="font-ui-label text-[10px] text-zinc-200">
+              Place your bet
+            </p>
+            <p className="text-[11px] text-zinc-400">
+              Debate starts in
+            </p>
+          </div>
+          <span
+            className="font-display text-3xl tabular-nums leading-none"
+            style={{
+              color:
+                countdownSeconds <= 5
+                  ? "var(--bear)"
+                  : "var(--accent)",
+              textShadow:
+                countdownSeconds <= 5
+                  ? "0 0 14px rgba(255,59,59,0.4)"
+                  : "0 0 14px rgba(247,183,49,0.4)",
+            }}
+          >
+            {countdownSeconds}s
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <FighterButton

@@ -21,13 +21,11 @@ export const dynamic = "force-dynamic"
 const MODEL = "claude-haiku-4-5-20251001"
 
 // --- Pacing ---
-// Tokens here are word-chunks (incl. whitespace) sent to the client.
-// BURST_TOKENS × inter-burst pause = effective tokens/sec to client.
-// We're well under 30 tok/sec — the goal is "thinking", not throughput.
-const BURST_TOKENS = 6
-const BURST_PAUSE_MS = 800
-const INTER_TURN_PAUSE_MS = 2000
-const INTER_ROUND_PAUSE_MS = 3000
+// Fast-chess feel: smooth token-by-token stream at 35ms each, 1.2s between
+// turns, 2.5s between rounds. Deliberate but never boring.
+const TOKEN_DELAY_MS = 35
+const INTER_TURN_PAUSE_MS = 1200
+const INTER_ROUND_PAUSE_MS = 2500
 const WORD_LIMIT = 80
 // Allow the model to overshoot a little so we can cap at a clean sentence
 // boundary instead of mid-word.
@@ -192,10 +190,15 @@ export async function GET(req: Request) {
           send("round", { round, of: ROUNDS })
 
           for (const [idx, side] of (["A", "B"] as const).entries()) {
-            // 2-second beat between turns. Skip before the very first turn
-            // so the fight starts crisp. The client's turn_start handler
-            // shows a 'preparing argument…' placeholder during this pause.
+            // 1.2s beat between turns. Skip before the very first turn so
+            // the fight starts crisp. Emit a 'thinking' event so the client
+            // can show "AGENT BEAR IS THINKING…" during the pause.
             if (!(round === 1 && idx === 0)) {
+              send("thinking", {
+                agent: side,
+                round,
+                message: `Agent ${side === "A" ? "BULL" : "BEAR"} is thinking…`,
+              })
               await new Promise((r) => setTimeout(r, INTER_TURN_PAUSE_MS))
             }
             send("turn_start", { agent: side, round })
@@ -263,13 +266,14 @@ export async function GET(req: Request) {
             // Phase 2 — hard cap at WORD_LIMIT, snapping to last sentence.
             const capped = capAt80Words(full)
 
-            // Phase 3 — stream out at the deliberate pace.
-            const tokens = capped.split(/(\s+)/) // alternate word / whitespace
-            for (let i = 0; i < tokens.length; i += BURST_TOKENS) {
-              const burst = tokens.slice(i, i + BURST_TOKENS).join("")
-              if (burst) send("delta", { agent: side, round, text: burst })
-              if (i + BURST_TOKENS < tokens.length) {
-                await new Promise((r) => setTimeout(r, BURST_PAUSE_MS))
+            // Phase 3 — stream token-by-token at 35ms each. Tokens here are
+            // whitespace-separated word fragments preserving the original
+            // spacing so the client sees natural typing.
+            const tokens = capped.split(/(\s+)/).filter(Boolean)
+            for (let i = 0; i < tokens.length; i++) {
+              send("delta", { agent: side, round, text: tokens[i] })
+              if (i < tokens.length - 1) {
+                await new Promise((r) => setTimeout(r, TOKEN_DELAY_MS))
               }
             }
 
