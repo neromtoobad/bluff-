@@ -2,8 +2,7 @@ import { NextResponse } from "next/server"
 import { createHash, randomUUID } from "crypto"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
 
-// Pinned to globalThis so dev hot-reload doesn't wipe state between
-// /init and /verify. Replace with a DB later.
+// Globally-pinned singletons so dev hot-reload doesn't wipe state.
 const _g = globalThis as unknown as {
   __userIdByEmail?: Map<string, string>
   __mockOtps?: Map<string, string>
@@ -24,6 +23,14 @@ function isMockMode(): boolean {
   return !key || key === "MOCK" || process.env.NEXT_PUBLIC_AUTH_MOCK === "1"
 }
 
+async function asJson<T = any>(res: Response): Promise<T | null> {
+  try {
+    return (await res.json()) as T
+  } catch {
+    return null
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { email } = (await req.json()) as { email?: string }
@@ -31,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "valid email required" }, { status: 400 })
     }
 
-    // --- MOCK PATH ---
+    // ---------- MOCK PATH ----------
     if (isMockMode()) {
       let userId = userIdByEmail.get(email)
       if (!userId) {
@@ -49,25 +56,20 @@ export async function POST(req: Request) {
       })
     }
 
-    // --- REAL CIRCLE USER-CONTROLLED WALLETS PATH ---
-    //
-    // NOTE: Circle's documented UCW flow is not a single "email -> OTP -> wallet"
-    // REST endpoint. The canonical flow is:
-    //   1. POST /v1/w3s/users         — create userId
-    //   2. POST /v1/w3s/users/token   — issue a session token + encryption key
-    //   3. (client) initialize the Circle Web SDK with the session token; the
-    //      SDK guides the user through PIN / biometric setup, which provisions
-    //      the wallet and returns a wallet address.
-    //
-    // We do steps 1+2 here. The client uses the returned userToken to drive
-    // the SDK. If you have a custom email-OTP gateway, plug it in where the
-    // mock OTP currently lives.
+    // ---------- REAL CIRCLE W3S FLOW ----------
+    // Three sequential calls, all server-side:
+    //   1. POST /v1/w3s/users               — create the user
+    //   2. POST /v1/w3s/users/token         — issue session token + encryptionKey
+    //   3. POST /v1/w3s/user/initialize     — mint a wallet-init challengeId
+    //                                         (requires X-User-Token)
+    // The client then drives W3SSdk.execute(challengeId) to complete PIN setup.
     const apiKey = process.env.CIRCLE_API_KEY!
-    const headers = {
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     }
 
+    // 1. Create (or re-use) Circle user keyed by our email.
     let userId = userIdByEmail.get(email)
     if (!userId) {
       userId = randomUUID()
@@ -77,61 +79,74 @@ export async function POST(req: Request) {
         body: JSON.stringify({ userId }),
       })
       if (!createRes.ok && createRes.status !== 409) {
-        const text = await createRes.text()
         return NextResponse.json(
-          { error: "Circle user create failed", detail: text },
+          {
+            error: "Circle user create failed",
+            status: createRes.status,
+            detail: await createRes.text(),
+          },
           { status: 502 },
         )
       }
       userIdByEmail.set(email, userId)
     }
 
+    // 2. Issue a session token + encryption key for the Circle Web SDK.
     const tokenRes = await fetch(`${CIRCLE_API_BASE}/users/token`, {
       method: "POST",
       headers,
       body: JSON.stringify({ userId }),
     })
     if (!tokenRes.ok) {
-      const text = await tokenRes.text()
       return NextResponse.json(
-        { error: "Circle session token failed", detail: text },
+        {
+          error: "Circle session token failed",
+          status: tokenRes.status,
+          detail: await tokenRes.text(),
+        },
         { status: 502 },
       )
     }
-    const tokenJson = (await tokenRes.json()) as {
+    const tokenJson = await asJson<{
       data?: { userToken?: string; encryptionKey?: string }
-    }
+    }>(tokenRes)
     const userToken = tokenJson?.data?.userToken
     const encryptionKey = tokenJson?.data?.encryptionKey
     if (!userToken || !encryptionKey) {
       return NextResponse.json(
-        { error: "Circle did not return a userToken" },
+        { error: "Circle did not return userToken / encryptionKey" },
         { status: 502 },
       )
     }
-
     circleSessions.set(userId, { userId, userToken, encryptionKey })
 
-    // Issue a wallet-init challenge that the client SDK can drive.
+    // 3. Mint the wallet-init challenge on Arc testnet.
     const initRes = await fetch(`${CIRCLE_API_BASE}/user/initialize`, {
       method: "POST",
-      headers: {
-        ...headers,
-        "X-User-Token": userToken,
-      },
+      headers: { ...headers, "X-User-Token": userToken },
       body: JSON.stringify({
         idempotencyKey: `init-${userId}`,
         blockchains: ["ARC-TESTNET"],
         accountType: "SCA",
       }),
     })
-
-    let challengeId = randomUUID()
-    if (initRes.ok) {
-      const initJson = (await initRes.json()) as {
-        data?: { challengeId?: string }
-      }
-      if (initJson?.data?.challengeId) challengeId = initJson.data.challengeId
+    if (!initRes.ok) {
+      return NextResponse.json(
+        {
+          error: "Circle initialize failed",
+          status: initRes.status,
+          detail: await initRes.text(),
+        },
+        { status: 502 },
+      )
+    }
+    const initJson = await asJson<{ data?: { challengeId?: string } }>(initRes)
+    const challengeId = initJson?.data?.challengeId
+    if (!challengeId) {
+      return NextResponse.json(
+        { error: "Circle did not return challengeId" },
+        { status: 502 },
+      )
     }
 
     return NextResponse.json({
@@ -139,10 +154,7 @@ export async function POST(req: Request) {
       challengeId,
       userToken,
       encryptionKey,
-      // The user-controlled flow needs the Circle Web SDK to take it from here.
-      // Email-OTP-only is not a Circle UCW capability without their hosted UI.
-      hint:
-        "Open Circle Web SDK with userToken + encryptionKey to complete wallet setup",
+      appId: process.env.NEXT_PUBLIC_CIRCLE_APP_ID,
     })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "unknown" }, { status: 500 })

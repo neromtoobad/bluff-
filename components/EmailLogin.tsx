@@ -3,7 +3,7 @@
 import { useState } from "react"
 import WalletBadge from "./WalletBadge"
 
-type Step = "email" | "otp" | "done"
+type Step = "email" | "otp" | "provisioning" | "done"
 
 type Props = {
   onWallet?: (address: string) => void
@@ -33,6 +33,59 @@ export default function EmailLogin({ onWallet }: Props = {}) {
       if (!res.ok) throw new Error(json.error ?? "failed to send OTP")
       setUserId(json.userId)
       setHint(json.hint ?? null)
+
+      // ---------- REAL CIRCLE PATH ----------
+      // If the server returned a userToken + challengeId, we're in the
+      // real Web SDK flow. Drive PIN setup through W3SSdk, then ask the
+      // server for the provisioned wallet address.
+      if (json.userToken && json.encryptionKey && json.challengeId) {
+        setStep("provisioning")
+        try {
+          const mod = await import("@circle-fin/w3s-pw-web-sdk")
+          const W3SSdk: any = (mod as any).W3SSdk ?? (mod as any).default
+          const sdk = new W3SSdk({
+            appSettings: {
+              appId:
+                json.appId ?? process.env.NEXT_PUBLIC_CIRCLE_APP_ID ?? "",
+            },
+          })
+          sdk.setAuthentication({
+            userToken: json.userToken,
+            encryptionKey: json.encryptionKey,
+          })
+          await new Promise<void>((resolve, reject) => {
+            sdk.execute(json.challengeId, (err: any, result: any) => {
+              if (err) reject(new Error(err?.message ?? "Circle SDK error"))
+              else if (
+                result?.status === "COMPLETE" ||
+                result?.status === "Completed" ||
+                result?.status === "IN_PROGRESS"
+              ) {
+                resolve()
+              } else {
+                reject(new Error(`Circle SDK status: ${result?.status}`))
+              }
+            })
+          })
+          // Wallet is provisioned — ask the server for the address.
+          const v = await fetch("/api/auth/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: json.userId }),
+          })
+          const vJson = await v.json()
+          if (!v.ok) throw new Error(vJson.error ?? "failed to fetch wallet")
+          setWalletAddress(vJson.walletAddress)
+          setStep("done")
+          onWallet?.(vJson.walletAddress)
+        } catch (sdkErr: any) {
+          setStep("email")
+          throw sdkErr
+        }
+        return
+      }
+
+      // ---------- MOCK / OTP PATH ----------
       setStep("otp")
     } catch (err: any) {
       setError(err.message)
@@ -99,6 +152,18 @@ export default function EmailLogin({ onWallet }: Props = {}) {
             {loading ? "Sending…" : "Send code"}
           </button>
         </form>
+      )}
+
+      {step === "provisioning" && (
+        <div className="rounded-md border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-3 py-4 text-center">
+          <p className="text-xs uppercase tracking-widest text-[color:var(--accent)] font-semibold">
+            Provisioning wallet…
+          </p>
+          <p className="mt-1 text-xs text-zinc-300">
+            Circle is setting up your smart wallet. Follow the prompts in the
+            popup.
+          </p>
+        </div>
       )}
 
       {step === "otp" && (

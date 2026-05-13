@@ -15,10 +15,12 @@
     "@circle-fin/w3s-pw-web-sdk": "latest",
     "@circle-fin/x402-batching": "latest",
     "@types/three": "^0.184.1",
+    "@types/uuid": "^10.0.0",
     "next": "14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.184.0",
+    "uuid": "^14.0.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
