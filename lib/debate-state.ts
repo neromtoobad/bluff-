@@ -21,6 +21,18 @@ export type ResearchEntry = {
   at: number
 }
 
+export type Payout = {
+  walletAddress: string
+  bet: string
+  share: string
+  payout: string
+  state: "pending" | "success" | "failed"
+  txHash?: string
+  explorerUrl?: string
+  error?: string
+  at: number
+}
+
 export type DebateSnapshot = {
   topic: string | null
   round: number
@@ -30,6 +42,8 @@ export type DebateSnapshot = {
   research: ResearchEntry[]
   transcript: Turn[]
   verdict: Verdict | null
+  settlement: "idle" | "running" | "done" | "error"
+  payouts: Payout[]
   startedAt: number | null
   updatedAt: number
 }
@@ -46,6 +60,8 @@ function fresh(): DebateSnapshot {
     research: [],
     transcript: [],
     verdict: null,
+    settlement: "idle",
+    payouts: [],
     startedAt: null,
     updatedAt: Date.now(),
   }
@@ -63,6 +79,8 @@ export function resetDebate(topic: string): void {
   s.research = []
   s.transcript = []
   s.verdict = null
+  s.settlement = "idle"
+  s.payouts = []
   s.startedAt = Date.now()
   s.updatedAt = Date.now()
 }
@@ -94,6 +112,30 @@ export function setStatus(status: DebateSnapshot["status"]): void {
 export function setVerdict(v: Verdict): void {
   debateState.verdict = v
   debateState.status = "done"
+  debateState.updatedAt = Date.now()
+}
+
+export function setSettlement(status: DebateSnapshot["settlement"]): void {
+  debateState.settlement = status
+  debateState.updatedAt = Date.now()
+}
+
+export function addPayout(p: Omit<Payout, "at">): Payout {
+  const entry: Payout = { ...p, at: Date.now() }
+  debateState.payouts.push(entry)
+  debateState.updatedAt = Date.now()
+  return entry
+}
+
+export function updatePayout(
+  walletAddress: string,
+  patch: Partial<Payout>,
+): void {
+  const p = debateState.payouts.find(
+    (x) => x.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
+  )
+  if (!p) return
+  Object.assign(p, patch)
   debateState.updatedAt = Date.now()
 }
 

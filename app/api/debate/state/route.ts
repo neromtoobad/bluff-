@@ -23,6 +23,8 @@ export async function GET() {
     })),
     transcript: s.transcript,
     verdict: s.verdict,
+    settlement: s.settlement,
+    payouts: s.payouts,
     startedAt: s.startedAt,
     updatedAt: s.updatedAt,
   })

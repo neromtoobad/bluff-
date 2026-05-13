@@ -8,9 +8,22 @@ type Verdict = {
   scores: { A: Score; B: Score }
   summary: string
 }
+type Payout = {
+  walletAddress: string
+  bet: string
+  share: string
+  payout: string
+  state: "pending" | "success" | "failed"
+  txHash?: string
+  explorerUrl?: string
+  error?: string
+}
+
 type State = {
   status: "idle" | "running" | "judging" | "done" | "error"
   verdict: Verdict | null
+  settlement: "idle" | "running" | "done" | "error"
+  payouts: Payout[]
 }
 
 const POLL_MS = 1500
@@ -71,6 +84,95 @@ export default function ScoreBoard() {
         <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Judge's verdict</p>
         <p className="text-sm leading-relaxed text-zinc-200">{v.summary}</p>
       </div>
+
+      <SettlementPanel
+        settlement={state.settlement}
+        payouts={state.payouts ?? []}
+      />
+    </div>
+  )
+}
+
+function shortAddr(a: string) {
+  return a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a
+}
+
+function SettlementPanel({
+  settlement,
+  payouts,
+}: {
+  settlement: State["settlement"]
+  payouts: Payout[]
+}) {
+  if (settlement === "idle") return null
+
+  const label =
+    settlement === "running"
+      ? "Settling winners on Arc Testnet…"
+      : settlement === "done"
+        ? "Payouts settled"
+        : "Settlement error"
+
+  const labelTint =
+    settlement === "done"
+      ? "text-emerald-300"
+      : settlement === "error"
+        ? "text-rose-300"
+        : "text-zinc-300"
+
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs uppercase tracking-wider text-zinc-400">
+          USDC payout
+        </p>
+        <p className={`text-xs ${labelTint}`}>{label}</p>
+      </div>
+
+      {payouts.length === 0 ? (
+        <p className="text-xs text-zinc-500 italic">
+          {settlement === "running"
+            ? "Computing winner shares…"
+            : "No winning bets to pay."}
+        </p>
+      ) : (
+        <div className="divide-y divide-zinc-800 rounded-xl border border-zinc-800 bg-zinc-950/60">
+          {payouts.map((p) => (
+            <div
+              key={p.walletAddress}
+              className="px-4 py-3 text-xs flex flex-wrap items-center gap-3"
+            >
+              <span className="font-mono text-zinc-200">
+                {shortAddr(p.walletAddress)}
+              </span>
+              <span className="text-zinc-400">
+                bet ${p.bet} → <span className="text-zinc-100">${p.payout}</span>
+              </span>
+              <span className="text-zinc-500">({Math.round(Number(p.share) * 100)}% share)</span>
+              <span className="ml-auto">
+                {p.state === "pending" && (
+                  <span className="text-zinc-400">pending…</span>
+                )}
+                {p.state === "success" && p.explorerUrl && (
+                  <a
+                    href={p.explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-300 hover:text-emerald-200 underline"
+                  >
+                    {p.txHash ? `${p.txHash.slice(0, 10)}…` : "view tx"}
+                  </a>
+                )}
+                {p.state === "failed" && (
+                  <span className="text-rose-400" title={p.error ?? ""}>
+                    failed
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

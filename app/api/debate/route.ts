@@ -172,6 +172,15 @@ export async function GET(req: Request) {
           if (judgeRes.ok) {
             const verdict = await judgeRes.json()
             send("verdict", verdict)
+
+            // Fire and forget — settlement runs server-side; UI polls state.
+            send("settling", {})
+            fetch(`${origin}/api/settle`, {
+              method: "POST",
+              cache: "no-store",
+            }).catch(() => {
+              /* swallow — state route will surface settlement errors */
+            })
           } else {
             const errText = await judgeRes.text()
             send("error", { message: `judge failed: ${errText}` })
