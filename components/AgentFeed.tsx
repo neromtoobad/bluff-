@@ -8,22 +8,24 @@ type Props = {
 }
 
 type AgentState = {
-  text: string
+  current: string // the in-flight streaming text
+  past: string[] // completed historical turns, newest last
   speaking: boolean
+  round: number
 }
 
 const TOTAL_ROUNDS = 4
+const initial: AgentState = { current: "", past: [], speaking: false, round: 0 }
 
 export default function AgentFeed({ topic, autoStart = true }: Props) {
   const [round, setRound] = useState(0)
-  const [a, setA] = useState<AgentState>({ text: "", speaking: false })
-  const [b, setB] = useState<AgentState>({ text: "", speaking: false })
+  const [a, setA] = useState<AgentState>(initial)
+  const [b, setB] = useState<AgentState>(initial)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!autoStart) return
-
     const url = topic
       ? `/api/debate?topic=${encodeURIComponent(topic)}`
       : "/api/debate"
@@ -35,9 +37,12 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
     })
 
     es.addEventListener("turn_start", (e) => {
-      const { agent } = JSON.parse((e as MessageEvent).data) as { agent: "A" | "B" }
-      if (agent === "A") setA((s) => ({ ...s, speaking: true }))
-      else setB((s) => ({ ...s, speaking: true }))
+      const { agent, round } = JSON.parse((e as MessageEvent).data) as {
+        agent: "A" | "B"
+        round: number
+      }
+      const setFn = agent === "A" ? setA : setB
+      setFn((s) => ({ ...s, speaking: true, current: "", round }))
     })
 
     es.addEventListener("delta", (e) => {
@@ -45,15 +50,22 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
         agent: "A" | "B"
         text: string
       }
-      if (agent === "A") setA((s) => ({ ...s, text: s.text + text }))
-      else setB((s) => ({ ...s, text: s.text + text }))
+      const setFn = agent === "A" ? setA : setB
+      setFn((s) => ({ ...s, current: s.current + text }))
     })
 
     es.addEventListener("turn_end", (e) => {
-      const { agent } = JSON.parse((e as MessageEvent).data) as { agent: "A" | "B" }
-      const sep = "\n\n"
-      if (agent === "A") setA((s) => ({ text: s.text + sep, speaking: false }))
-      else setB((s) => ({ text: s.text + sep, speaking: false }))
+      const { agent, text } = JSON.parse((e as MessageEvent).data) as {
+        agent: "A" | "B"
+        text: string
+      }
+      const setFn = agent === "A" ? setA : setB
+      setFn((s) => ({
+        ...s,
+        speaking: false,
+        current: "",
+        past: [...s.past, text],
+      }))
     })
 
     es.addEventListener("done", () => {
@@ -75,55 +87,191 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
   }, [topic, autoStart])
 
   return (
-    <div className="w-full max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Debate</h2>
-        <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-300">
-          {done ? "Finished" : round === 0 ? "Warming up…" : `Round ${round} of ${TOTAL_ROUNDS}`}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <AgentColumn label="Agent A — FOR" tint="emerald" state={a} />
-        <AgentColumn label="Agent B — AGAINST" tint="rose" state={b} />
-      </div>
-
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <AgentCard
+        team="bull"
+        name="BULL"
+        emoji="🐂"
+        state={a}
+        totalRounds={TOTAL_ROUNDS}
+      />
+      <AgentCard
+        team="bear"
+        name="BEAR"
+        emoji="🐻"
+        state={b}
+        totalRounds={TOTAL_ROUNDS}
+      />
       {error && (
-        <p className="text-sm text-rose-400" role="alert">
+        <p
+          className="col-span-full text-xs text-[color:var(--bear)]"
+          role="alert"
+        >
           {error}
+        </p>
+      )}
+      {done && (
+        <p className="col-span-full text-center text-[10px] uppercase tracking-widest text-zinc-500">
+          Round {TOTAL_ROUNDS} complete · awaiting verdict
         </p>
       )}
     </div>
   )
 }
 
-function AgentColumn({
-  label,
+function AgentCard({
+  team,
+  name,
+  emoji,
   state,
-  tint,
+  totalRounds,
 }: {
-  label: string
+  team: "bull" | "bear"
+  name: string
+  emoji: string
   state: AgentState
-  tint: "emerald" | "rose"
+  totalRounds: number
 }) {
-  const dot = tint === "emerald" ? "bg-emerald-400" : "bg-rose-400"
-  const ring = tint === "emerald" ? "border-emerald-700/50" : "border-rose-700/50"
+  const color = team === "bull" ? "var(--bull)" : "var(--bear)"
+  const soft = team === "bull" ? "var(--bull-soft)" : "var(--bear-soft)"
+  const liveBubbleKey = `${state.round}-${state.current.length === 0 && state.speaking ? "warming" : "live"}`
+
   return (
-    <div className={`rounded-2xl border ${ring} bg-zinc-900/60 p-4 min-h-[260px] flex flex-col`}>
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className={`h-2 w-2 rounded-full ${dot} ${
-            state.speaking ? "animate-pulse" : "opacity-50"
-          }`}
-        />
-        <span className="text-sm font-semibold text-zinc-200">{label}</span>
-        {state.speaking && (
-          <span className="text-[10px] uppercase tracking-wider text-zinc-400">speaking</span>
+    <div
+      className="flex flex-col rounded-lg border bg-[color:var(--bg-card)] overflow-hidden"
+      style={{ borderColor: state.speaking ? color : "var(--border)" }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-3 py-2 border-b"
+        style={{
+          borderColor: "var(--border)",
+          background: state.speaking ? soft : "var(--bg-card-2)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-2xl leading-none">{emoji}</span>
+          <div>
+            <div
+              className="text-sm font-black tracking-widest"
+              style={{ color }}
+            >
+              AGENT {name}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+              {team === "bull" ? "Arguing FOR" : "Arguing AGAINST"}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {state.speaking && (
+            <span
+              className="h-1.5 w-1.5 rounded-full dot-pulse"
+              style={{ background: color }}
+            />
+          )}
+          <span
+            className="rounded border px-2 py-0.5 text-[10px] font-mono tracking-wider"
+            style={{ borderColor: "var(--border-soft)", color }}
+          >
+            R{state.round || "-"}/{totalRounds}
+          </span>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 flex flex-col gap-2 px-3 py-3 min-h-[300px]">
+        {/* Live / latest bubble */}
+        {(state.speaking || state.current) && (
+          <SpeechBubble
+            key={liveBubbleKey}
+            team={team}
+            text={state.current}
+            live
+          />
+        )}
+        {!state.speaking && state.past.length > 0 && (
+          <SpeechBubble
+            key={`latest-${state.past.length}`}
+            team={team}
+            text={state.past[state.past.length - 1]}
+            live
+          />
+        )}
+
+        {/* Older turns, stacked + faded */}
+        {state.past.length > 1 && !state.speaking && (
+          <div className="space-y-2 pt-1 opacity-50">
+            {state.past
+              .slice(0, -1)
+              .reverse()
+              .map((t, i) => (
+                <SpeechBubble
+                  key={`past-${state.past.length}-${i}`}
+                  team={team}
+                  text={t}
+                />
+              ))}
+          </div>
+        )}
+        {state.speaking && state.past.length > 0 && (
+          <div className="space-y-2 pt-1 opacity-50">
+            {state.past
+              .slice()
+              .reverse()
+              .map((t, i) => (
+                <SpeechBubble
+                  key={`past-live-${i}`}
+                  team={team}
+                  text={t}
+                />
+              ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!state.speaking && state.past.length === 0 && !state.current && (
+          <p className="text-xs italic text-zinc-600">
+            Waiting for opening statement…
+          </p>
         )}
       </div>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200 flex-1">
-        {state.text || (
-          <span className="text-zinc-500 italic">Waiting for opening statement…</span>
+    </div>
+  )
+}
+
+function SpeechBubble({
+  team,
+  text,
+  live,
+}: {
+  team: "bull" | "bear"
+  text: string
+  live?: boolean
+}) {
+  const color = team === "bull" ? "var(--bull)" : "var(--bear)"
+  return (
+    <div
+      className={`bubble-pop relative rounded-lg border px-3 py-2.5 text-sm leading-relaxed ${
+        live ? "" : "text-xs"
+      }`}
+      style={{
+        borderColor: live ? color : "var(--border-soft)",
+        background: live ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.2)",
+        boxShadow: live
+          ? `0 0 0 1px ${color}22, 0 8px 28px -16px ${color}66`
+          : "none",
+      }}
+    >
+      <p className="whitespace-pre-wrap text-zinc-100">
+        {text || (
+          <span className="inline-flex items-center gap-1 text-zinc-500">
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: color, animation: "pulse-ring 1.4s ease-out infinite" }}
+            />
+            preparing argument…
+          </span>
         )}
       </p>
     </div>

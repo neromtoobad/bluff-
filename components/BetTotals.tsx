@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 type Totals = {
   A: { amount: string; bettors: number }
@@ -10,27 +10,45 @@ type Totals = {
 
 const POLL_MS = 3000
 
-export default function BetTotals() {
+function useTweenedNumber(target: number, durationMs = 700): number {
+  const [value, setValue] = useState(target)
+  const fromRef = useRef(target)
+  const startRef = useRef<number>(0)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    fromRef.current = value
+    startRef.current = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - startRef.current) / durationMs)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setValue(fromRef.current + (target - fromRef.current) * eased)
+      if (t < 1) rafRef.current = requestAnimationFrame(tick)
+    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, durationMs])
+
+  return value
+}
+
+export default function BetTotals({ variant = "panel" }: { variant?: "panel" | "compact" } = {}) {
   const [totals, setTotals] = useState<Totals | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-
     async function tick() {
       try {
         const res = await fetch("/api/bet/totals", { cache: "no-store" })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        if (!res.ok) return
         const json = (await res.json()) as Totals
-        if (!cancelled) {
-          setTotals(json)
-          setError(null)
-        }
-      } catch (err: any) {
-        if (!cancelled) setError(err.message ?? "poll failed")
-      }
+        if (!cancelled) setTotals(json)
+      } catch {}
     }
-
     tick()
     const id = setInterval(tick, POLL_MS)
     return () => {
@@ -39,64 +57,73 @@ export default function BetTotals() {
     }
   }, [])
 
-  const a = totals?.A
-  const b = totals?.B
+  const potTarget = Number(totals?.pot ?? 0)
+  const potTween = useTweenedNumber(potTarget)
+  const aAmount = Number(totals?.A.amount ?? 0)
+  const bAmount = Number(totals?.B.amount ?? 0)
+  const aBettors = totals?.A.bettors ?? 0
+  const bBettors = totals?.B.bettors ?? 0
 
-  return (
-    <div className="w-full max-w-4xl rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Live bets</h2>
-        <span className="text-xs text-zinc-400">
-          Pot: <span className="font-mono text-zinc-100">${totals?.pot ?? "0.00"}</span>
+  if (variant === "compact") {
+    return (
+      <div className="flex items-center gap-3 rounded-md border border-[color:var(--border-soft)] bg-[color:var(--bg-card)] px-3 py-1.5 text-[11px]">
+        <span className="text-zinc-500 uppercase tracking-widest">Pot</span>
+        <span className="font-mono text-base font-bold text-[color:var(--accent)] tabular-nums">
+          ${potTween.toFixed(2)}
+        </span>
+        <span className="hidden sm:inline text-zinc-700">|</span>
+        <span className="hidden sm:inline text-zinc-400">
+          <span className="text-[color:var(--bull)] font-mono">{aBettors}</span>·
+          <span className="text-[color:var(--bear)] font-mono">{bBettors}</span>
         </span>
       </div>
+    )
+  }
 
-      <div className="grid grid-cols-2 gap-4">
-        <SideCard
-          label="Agent A — FOR"
-          tint="emerald"
-          amount={a?.amount ?? "0.00"}
-          bettors={a?.bettors ?? 0}
-        />
-        <SideCard
-          label="Agent B — AGAINST"
-          tint="rose"
-          amount={b?.amount ?? "0.00"}
-          bettors={b?.bettors ?? 0}
-        />
+  return (
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-card)] p-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+          Total pot
+        </span>
+        <span className="font-mono text-xl font-bold text-[color:var(--accent)] tabular-nums">
+          ${potTween.toFixed(2)}
+        </span>
       </div>
-
-      {error && (
-        <p className="mt-3 text-xs text-rose-400" role="alert">
-          {error}
-        </p>
-      )}
+      <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+        <div className="rounded border border-[color:var(--border-soft)] bg-black/40 px-2 py-1.5">
+          <div className="text-[color:var(--bull)] font-bold">BULL</div>
+          <div className="font-mono text-zinc-200">${aAmount.toFixed(2)}</div>
+          <div className="text-zinc-500">{aBettors} {aBettors === 1 ? "bettor" : "bettors"}</div>
+        </div>
+        <div className="rounded border border-[color:var(--border-soft)] bg-black/40 px-2 py-1.5">
+          <div className="text-[color:var(--bear)] font-bold">BEAR</div>
+          <div className="font-mono text-zinc-200">${bAmount.toFixed(2)}</div>
+          <div className="text-zinc-500">{bBettors} {bBettors === 1 ? "bettor" : "bettors"}</div>
+        </div>
+      </div>
     </div>
   )
 }
 
-function SideCard({
-  label,
-  amount,
-  bettors,
-  tint,
-}: {
-  label: string
-  amount: string
-  bettors: number
-  tint: "emerald" | "rose"
-}) {
-  const accent =
-    tint === "emerald"
-      ? "border-emerald-700/50 text-emerald-200"
-      : "border-rose-700/50 text-rose-200"
-  return (
-    <div className={`rounded-xl border ${accent} bg-zinc-950/60 p-4`}>
-      <p className="text-xs uppercase tracking-wider text-zinc-400">{label}</p>
-      <p className="mt-2 text-2xl font-bold font-mono">${amount}</p>
-      <p className="mt-1 text-xs text-zinc-400">
-        {bettors} {bettors === 1 ? "bettor" : "bettors"}
-      </p>
-    </div>
-  )
+export function usePotTotals() {
+  const [totals, setTotals] = useState<Totals | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    async function tick() {
+      try {
+        const res = await fetch("/api/bet/totals", { cache: "no-store" })
+        if (!res.ok) return
+        const json = (await res.json()) as Totals
+        if (!cancelled) setTotals(json)
+      } catch {}
+    }
+    tick()
+    const id = setInterval(tick, POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [])
+  return totals
 }

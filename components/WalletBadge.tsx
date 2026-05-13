@@ -10,15 +10,17 @@ function truncate(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
-export default function WalletBadge({ address, usdcBalance = "0.00" }: Props) {
+export default function WalletBadge({ address, usdcBalance }: Props) {
   return (
-    <div className="inline-flex items-center gap-3 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm">
-      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+    <div className="inline-flex items-center gap-2 rounded-md border border-[color:var(--border-soft)] bg-[color:var(--bg-card)] px-2.5 py-1.5 text-[11px]">
+      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--accent)] dot-pulse" />
       <span className="font-mono text-zinc-200">{truncate(address)}</span>
-      <span className="h-4 w-px bg-zinc-700" />
-      <span className="text-zinc-400">
-        <span className="text-zinc-100 font-semibold">{usdcBalance}</span> USDC
-      </span>
+      {usdcBalance && (
+        <>
+          <span className="text-zinc-700">·</span>
+          <span className="font-mono text-zinc-300">${usdcBalance}</span>
+        </>
+      )}
     </div>
   )
 }

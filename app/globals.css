@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bg: #0a0a0a;
+  --bg-soft: #111111;
+  --bg-card: #141414;
+  --bg-card-2: #181818;
+  --border: #1f1f1f;
+  --border-soft: #2a2a2a;
+  --text: #f4f4f5;
+  --text-mute: #71717a;
+  --accent: #00ff88;
+  --accent-soft: rgba(0, 255, 136, 0.12);
+  --bull: #00ff88;
+  --bull-soft: rgba(0, 255, 136, 0.12);
+  --bear: #ff3355;
+  --bear-soft: rgba(255, 51, 85, 0.12);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 255, 136, 0);
+  }
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.bubble-pop {
+  animation: pop-in 280ms ease-out both;
+}
+
+.dot-pulse {
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+.ticker-track {
+  animation: ticker-scroll 16s linear infinite;
+  will-change: transform;
+}
