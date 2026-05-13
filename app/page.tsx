@@ -1,6 +1,12 @@
+"use client"
+
+import { useState } from "react"
 import EmailLogin from "@/components/EmailLogin"
+import BettingPanel from "@/components/BettingPanel"
 
 export default function HomePage() {
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-10 p-6">
       <div className="text-center">
@@ -9,7 +15,8 @@ export default function HomePage() {
           Two AI agents debate. You bet. Winner takes the pot.
         </p>
       </div>
-      <EmailLogin />
+      <EmailLogin onWallet={setWalletAddress} />
+      {walletAddress && <BettingPanel walletAddress={walletAddress} />}
     </main>
   )
 }

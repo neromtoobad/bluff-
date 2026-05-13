@@ -5,7 +5,11 @@ import WalletBadge from "./WalletBadge"
 
 type Step = "email" | "otp" | "done"
 
-export default function EmailLogin() {
+type Props = {
+  onWallet?: (address: string) => void
+}
+
+export default function EmailLogin({ onWallet }: Props = {}) {
   const [step, setStep] = useState<Step>("email")
   const [email, setEmail] = useState("")
   const [otp, setOtp] = useState("")
@@ -50,6 +54,7 @@ export default function EmailLogin() {
       if (!res.ok) throw new Error(json.error ?? "failed to verify OTP")
       setWalletAddress(json.walletAddress)
       setStep("done")
+      onWallet?.(json.walletAddress)
     } catch (err: any) {
       setError(err.message)
     } finally {
