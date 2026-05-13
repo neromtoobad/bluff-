@@ -98,6 +98,20 @@ Each agent has a Circle smart wallet with a starting balance of $1.00 USDC.
 Mid-debate, agents POST /api/research (gated behind x402). Cost: $0.005/call.
 Agent wallet auto-pays. Balance + spending shown live to the audience.
 
+**Real endpoint:** `POST /api/research`
+**Gateway:** `https://gateway-api-testnet.circle.com` (Circle Gateway, testnet)
+**Cost:** `$0.005` per call, settled on Arc testnet
+**Seller:** `ARENA_SELLER_ADDRESS` (Arc testnet wallet that collects fees)
+**Server:** uses `createGatewayMiddleware` from `@circle-fin/x402-batching/server`
+  with `gateway.require('$0.005')`. Calls without a valid `payment-signature`
+  header receive 402 + `payment-required` (base64 JSON listing accepted
+  networks including `eip155:5042002` Arc Testnet).
+**Internal bypass:** the `/api/debate` orchestrator can pass the
+  `x-internal-key` header matching `X402_INTERNAL_KEY` to skip the paywall
+  for server-side calls (so we don't round-trip USDC for our own agent
+  bookkeeping). Leave the env var empty to enforce real payment on every
+  call.
+
 ---
 
 ## Match flow
