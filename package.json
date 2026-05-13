@@ -1,0 +1,31 @@
+{
+  "name": "agent-battle-arena",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@circle-fin/adapter-viem-v2": "latest",
+    "@circle-fin/app-kit": "latest",
+    "@circle-fin/w3s-pw-web-sdk": "latest",
+    "@circle-fin/x402-batching": "latest",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5"
+  }
+}

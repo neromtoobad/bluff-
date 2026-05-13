@@ -1,0 +1,140 @@
+"use client"
+
+import { useState } from "react"
+import WalletBadge from "./WalletBadge"
+
+type Step = "email" | "otp" | "done"
+
+export default function EmailLogin() {
+  const [step, setStep] = useState<Step>("email")
+  const [email, setEmail] = useState("")
+  const [otp, setOtp] = useState("")
+  const [userId, setUserId] = useState<string | null>(null)
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/auth/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? "failed to send OTP")
+      setUserId(json.userId)
+      setStep("otp")
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!userId) return
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, otp }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? "failed to verify OTP")
+      setWalletAddress(json.walletAddress)
+      setStep("done")
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (step === "done" && walletAddress) {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <p className="text-sm text-zinc-400">Smart wallet ready</p>
+        <WalletBadge address={walletAddress} usdcBalance="0.00" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-xl">
+      <h2 className="text-lg font-semibold mb-1">Sign in to bet</h2>
+      <p className="text-sm text-zinc-400 mb-5">
+        No seed phrase. No extension. Just email.
+      </p>
+
+      {step === "email" && (
+        <form onSubmit={handleEmailSubmit} className="space-y-3">
+          <input
+            type="email"
+            required
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+          >
+            {loading ? "Sending…" : "Send code"}
+          </button>
+        </form>
+      )}
+
+      {step === "otp" && (
+        <form onSubmit={handleOtpSubmit} className="space-y-3">
+          <p className="text-xs text-zinc-400">
+            Code sent to <span className="text-zinc-200">{email}</span>
+          </p>
+          <input
+            type="text"
+            required
+            autoFocus
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            placeholder="6-digit code"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm tracking-widest font-mono outline-none focus:border-emerald-500"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+          >
+            {loading ? "Verifying…" : "Verify & create wallet"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStep("email")
+              setOtp("")
+            }}
+            className="w-full text-xs text-zinc-400 hover:text-zinc-200"
+          >
+            Use a different email
+          </button>
+        </form>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm text-rose-400" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
