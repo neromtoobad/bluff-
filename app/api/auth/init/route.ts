@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { ...headers, "X-User-Token": userToken },
       body: JSON.stringify({
-        idempotencyKey: `init-${userId}`,
+        idempotencyKey: randomUUID(),
         blockchains: ["ARC-TESTNET"],
         accountType: "SCA",
       }),
