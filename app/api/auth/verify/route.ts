@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
+import { deriveMockAddress, isMockMode, mockOtps } from "../init/route"
 
 export async function POST(req: Request) {
   try {
@@ -8,17 +9,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "userId and otp required" }, { status: 400 })
     }
 
-    const apiKey = process.env.CIRCLE_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: "CIRCLE_API_KEY not set" }, { status: 500 })
+    // --- MOCK PATH ---
+    if (isMockMode()) {
+      const expected = mockOtps.get(userId)
+      if (!expected) {
+        return NextResponse.json({ error: "no pending OTP for user" }, { status: 401 })
+      }
+      // Accept either the issued code or the universal demo code 424242.
+      if (otp !== expected && otp !== "424242") {
+        return NextResponse.json({ error: "invalid OTP" }, { status: 401 })
+      }
+      mockOtps.delete(userId)
+      const walletAddress = deriveMockAddress(userId)
+      return NextResponse.json({ walletAddress, mock: true })
     }
 
+    // --- REAL CIRCLE PATH ---
+    const apiKey = process.env.CIRCLE_API_KEY!
     const headers = {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     }
 
-    // 1. Verify OTP.
     const verifyRes = await fetch(`${CIRCLE_API_BASE}/users/email/otp/verify`, {
       method: "POST",
       headers,
@@ -29,8 +41,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "OTP verify failed", detail: text }, { status: 401 })
     }
 
-    // 2. Ensure a wallet exists for this user on Arc testnet, then return its address.
-    //    Circle will no-op if the wallet already exists for this idempotency key.
     const walletRes = await fetch(`${CIRCLE_API_BASE}/user/wallets`, {
       method: "POST",
       headers: { ...headers, "X-User-Id": userId },
@@ -48,8 +58,6 @@ export async function POST(req: Request) {
       }
       walletAddress = json?.data?.wallets?.[0]?.address
     }
-
-    // Fallback: list existing wallets if create returned no address.
     if (!walletAddress) {
       const listRes = await fetch(`${CIRCLE_API_BASE}/user/wallets`, {
         method: "GET",

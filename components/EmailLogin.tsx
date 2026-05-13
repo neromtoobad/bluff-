@@ -17,6 +17,7 @@ export default function EmailLogin({ onWallet }: Props = {}) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hint, setHint] = useState<string | null>(null)
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -31,6 +32,7 @@ export default function EmailLogin({ onWallet }: Props = {}) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? "failed to send OTP")
       setUserId(json.userId)
+      setHint(json.hint ?? null)
       setStep("otp")
     } catch (err: any) {
       setError(err.message)
@@ -104,6 +106,11 @@ export default function EmailLogin({ onWallet }: Props = {}) {
           <p className="text-xs text-zinc-400">
             Code sent to <span className="text-zinc-200">{email}</span>
           </p>
+          {hint && (
+            <p className="rounded-md border border-amber-700/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Demo mode — {hint}
+            </p>
+          )}
           <input
             type="text"
             required

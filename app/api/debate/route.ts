@@ -27,20 +27,36 @@ function userPromptFor(
   round: number,
   insight: string | null,
 ): string {
+  const opponent = side === "A" ? "B" : "A"
   const research = insight
-    ? `Fresh research you just paid $${RESEARCH_COST_USDC.toFixed(3)} USDC to fetch:\n"${insight}"\nUse it if relevant.\n\n`
+    ? `Fresh data you just paid $${RESEARCH_COST_USDC.toFixed(3)} USDC for:\n"${insight}"\nUse it if it lands. Drop it if it doesn't.\n\n`
     : ""
 
+  const rules = [
+    `Rules: 3 sentences max. No academic words. Attack Agent ${opponent} directly. End with a brutal one-liner on its own line.`,
+  ].join("\n")
+
   if (history.length === 0) {
-    return `${research}Round ${round} of ${ROUNDS}. Open the debate on "${topic}". Give your strongest argument now.`
+    return [
+      `${research}Round ${round} of ${ROUNDS}. Open the fight on "${topic}". Hit hard.`,
+      rules,
+    ].join("\n\n")
   }
+
+  const lastOpponent = [...history].reverse().find((t) => t.agent === opponent)
   const transcript = history
-    .map((t) => `Round ${t.round} — Agent ${t.agent}: ${t.text}`)
+    .map((t) => `R${t.round} · Agent ${t.agent}: ${t.text}`)
     .join("\n\n")
+
+  const target = lastOpponent
+    ? `Agent ${opponent} just said: "${lastOpponent.text}"\nRip that apart specifically.`
+    : `Open hard.`
+
   return [
     `Debate so far:\n\n${transcript}`,
     ``,
-    `${research}Round ${round} of ${ROUNDS}. You are Agent ${side}. Respond now — rebut the latest point and advance your case.`,
+    `${research}Round ${round} of ${ROUNDS}. ${target}`,
+    rules,
   ].join("\n")
 }
 
@@ -100,7 +116,11 @@ export async function GET(req: Request) {
           setRound(round)
           send("round", { round, of: ROUNDS })
 
-          for (const side of ["A", "B"] as const) {
+          for (const [idx, side] of (["A", "B"] as const).entries()) {
+            // Dramatic pause between turns (skip before the very first turn).
+            if (!(round === 1 && idx === 0)) {
+              await new Promise((r) => setTimeout(r, 500))
+            }
             send("turn_start", { agent: side, round })
 
             // Pull research once per round, deduct from balance.
@@ -131,7 +151,7 @@ export async function GET(req: Request) {
 
             const turnStream = client.messages.stream({
               model: MODEL,
-              max_tokens: 350,
+              max_tokens: 180,
               system: systemPromptFor(side, topic),
               messages: [{ role: "user", content: userPrompt }],
             })

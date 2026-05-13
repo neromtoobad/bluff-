@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 type Props = {
   topic?: string
@@ -20,11 +20,9 @@ export default function AgentFeed({ topic, autoStart = true }: Props) {
   const [b, setB] = useState<AgentState>({ text: "", speaking: false })
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const started = useRef(false)
 
   useEffect(() => {
-    if (!autoStart || started.current) return
-    started.current = true
+    if (!autoStart) return
 
     const url = topic
       ? `/api/debate?topic=${encodeURIComponent(topic)}`

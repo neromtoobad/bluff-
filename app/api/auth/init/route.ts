@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server"
-import { randomUUID } from "crypto"
+import { createHash, randomUUID } from "crypto"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
 
-// In-memory map: email -> Circle userId. Replace with a DB later.
-const userIdByEmail = new Map<string, string>()
+// Pinned to globalThis so dev hot-reload doesn't wipe state between
+// /init and /verify. Replace with a DB later.
+const _g = globalThis as unknown as {
+  __userIdByEmail?: Map<string, string>
+  __mockOtps?: Map<string, string>
+}
+const userIdByEmail: Map<string, string> = _g.__userIdByEmail ?? new Map()
+const mockOtps: Map<string, string> = _g.__mockOtps ?? new Map()
+if (!_g.__userIdByEmail) _g.__userIdByEmail = userIdByEmail
+if (!_g.__mockOtps) _g.__mockOtps = mockOtps
+
+function isMockMode(): boolean {
+  const key = process.env.CIRCLE_API_KEY
+  return !key || key === "MOCK" || process.env.NEXT_PUBLIC_AUTH_MOCK === "1"
+}
 
 export async function POST(req: Request) {
   try {
@@ -12,17 +25,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "valid email required" }, { status: 400 })
     }
 
-    const apiKey = process.env.CIRCLE_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: "CIRCLE_API_KEY not set" }, { status: 500 })
+    // --- MOCK PATH ---
+    // The real Circle user-controlled-wallet flow requires a client-side SDK
+    // PIN/biometric setup. For demo purposes we issue a fake OTP and key
+    // a deterministic wallet address off the email in /verify.
+    if (isMockMode()) {
+      let userId = userIdByEmail.get(email)
+      if (!userId) {
+        userId = randomUUID()
+        userIdByEmail.set(email, userId)
+      }
+      const otp = "424242"
+      mockOtps.set(userId, otp)
+      console.log(`[mock auth] OTP for ${email}: ${otp}`)
+      return NextResponse.json({
+        userId,
+        challengeId: randomUUID(),
+        mock: true,
+        hint: "Use code 424242",
+      })
     }
 
+    // --- REAL CIRCLE PATH (placeholder — Circle integration is more involved) ---
+    const apiKey = process.env.CIRCLE_API_KEY!
     const headers = {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     }
 
-    // 1. Create (or reuse) a Circle user keyed by email.
     let userId = userIdByEmail.get(email)
     if (!userId) {
       userId = randomUUID()
@@ -41,7 +71,6 @@ export async function POST(req: Request) {
       userIdByEmail.set(email, userId)
     }
 
-    // 2. Trigger email OTP challenge for this user.
     const challengeRes = await fetch(`${CIRCLE_API_BASE}/users/email/otp`, {
       method: "POST",
       headers,
@@ -57,12 +86,18 @@ export async function POST(req: Request) {
     const challengeJson = (await challengeRes.json()) as {
       data?: { challengeId?: string }
     }
-    const challengeId = challengeJson?.data?.challengeId ?? randomUUID()
-
-    return NextResponse.json({ userId, challengeId })
+    return NextResponse.json({
+      userId,
+      challengeId: challengeJson?.data?.challengeId ?? randomUUID(),
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "unknown" }, { status: 500 })
   }
 }
 
-export { userIdByEmail }
+export function deriveMockAddress(userId: string): string {
+  const hash = createHash("sha256").update(`mock-wallet:${userId}`).digest("hex")
+  return `0x${hash.slice(0, 40)}`
+}
+
+export { userIdByEmail, mockOtps, isMockMode }
