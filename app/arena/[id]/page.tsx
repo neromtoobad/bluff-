@@ -32,10 +32,10 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
   // If the server already has a debate running/done when we land, skip lobby.
   const [phase, setPhase] = useState<"lobby" | "live">("lobby")
   const [phaseDecided, setPhaseDecided] = useState(false)
-  // Lobby countdown lifted up to the arena page so the BettingPanel can
-  // stay mounted across the lobby → live transition (which fixes
-  // disappearing bets when the user clicks Place Bet near the boundary).
-  const [lobbyCountdown, setLobbyCountdown] = useState<number | null>(null)
+  // No countdown — the debate only starts when the user places a bet and
+  // explicitly clicks START. Poll their bet status here so the Lobby can
+  // enable the start button.
+  const [hasBet, setHasBet] = useState(false)
   const [verdictDismissed, setVerdictDismissed] = useState(false)
 
   useEffect(() => {
@@ -63,6 +63,29 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
     if (arena.status !== "idle") setPhase("live")
     setPhaseDecided(true)
   }, [arena, phaseDecided])
+
+  // Poll for whether the user has placed a bet so the Lobby's START
+  // button can enable. 3s feels live enough without spamming.
+  useEffect(() => {
+    if (!wallet || phase !== "lobby") return
+    let cancelled = false
+    async function tick() {
+      try {
+        const r = await fetch(
+          `/api/bet?walletAddress=${encodeURIComponent(wallet!)}`,
+          { cache: "no-store" },
+        )
+        const j = (await r.json()) as { bet?: unknown | null }
+        if (!cancelled) setHasBet(!!j?.bet)
+      } catch {}
+    }
+    tick()
+    const id = setInterval(tick, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [wallet, phase])
 
   if (!wallet) {
     return (
@@ -196,11 +219,8 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
           {phase === "lobby" ? (
             <Lobby
               topic={queryTopic ?? arena?.topic ?? "TBD"}
-              onTick={(s) => setLobbyCountdown(s)}
-              onStart={() => {
-                setLobbyCountdown(null)
-                setPhase("live")
-              }}
+              hasBet={hasBet}
+              onStart={() => setPhase("live")}
             />
           ) : (
             <AgentFeed
@@ -212,10 +232,7 @@ export default function ArenaPage({ params }: { params: { id: string } }) {
 
         <aside className="space-y-3">
           <BetTotals variant="panel" />
-          <BettingPanel
-            walletAddress={wallet}
-            countdownSeconds={phase === "lobby" ? lobbyCountdown : null}
-          />
+          <BettingPanel walletAddress={wallet} />
         </aside>
       </main>
 

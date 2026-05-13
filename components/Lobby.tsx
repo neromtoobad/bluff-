@@ -1,14 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 
 type Props = {
   topic: string
-  // walletAddress kept for backward-compat; the betting panel is now
-  // mounted by the arena page so it survives the lobby → live transition.
   walletAddress?: string
-  countdownSeconds?: number
-  onTick?: (secs: number) => void
+  hasBet?: boolean
   onStart: () => void
 }
 
@@ -29,26 +26,10 @@ const BEAR_STATS: FighterStats = {
 
 export default function Lobby({
   topic,
-  countdownSeconds = 15,
-  onTick,
+  hasBet = false,
   onStart,
 }: Props) {
-  const [secs, setSecs] = useState(countdownSeconds)
-
-  // Stable random spectator count for the session.
   const spectators = useMemo(() => 8 + Math.floor(Math.random() * 33), [])
-
-  useEffect(() => {
-    onTick?.(secs)
-    if (secs <= 0) {
-      onStart()
-      return
-    }
-    const id = setTimeout(() => setSecs((s) => s - 1), 1000)
-    return () => clearTimeout(id)
-  }, [secs, onStart, onTick])
-
-  const urgent = secs <= 3
 
   return (
     <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-6">
@@ -87,26 +68,45 @@ export default function Lobby({
           <FighterCard team="bear" name="BEAR" emoji="🐻" stats={BEAR_STATS} />
         </div>
 
-        {/* Countdown */}
+        {/* Bet gate — no countdown; the debate starts when the user has
+            placed a bet and clicks START. */}
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-card)] p-6 text-center">
-          <p className="font-ui-label text-[10px] text-zinc-500">
-            Place your bet — debate starts in
-          </p>
-          <p
-            className="mt-1 font-display tabular-nums leading-none"
-            style={{
-              fontSize: "clamp(48px, 8vw, 96px)",
-              color: urgent ? "var(--bear)" : "var(--accent)",
-              textShadow: urgent
-                ? "0 0 28px rgba(255, 59, 59, 0.45)"
-                : "0 0 28px rgba(247, 183, 49, 0.45)",
-            }}
-          >
-            {secs}s
-          </p>
-          <p className="mt-2 font-ui-label text-[10px] text-zinc-600">
-            {urgent ? "Get your bets in" : "seconds"}
-          </p>
+          {hasBet ? (
+            <>
+              <p className="font-ui-label text-[10px] text-zinc-500">
+                Your bet is locked in
+              </p>
+              <button
+                type="button"
+                onClick={onStart}
+                className="cta-glow mt-3 rounded-lg bg-[color:var(--accent)] px-6 py-3 font-display text-2xl tracking-[0.1em] text-black hover:brightness-110"
+              >
+                START THE DEBATE →
+              </button>
+              <p className="mt-3 font-ui-label text-[10px] text-zinc-600">
+                Agents will pay for research with USDC · settlement on Arc
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-ui-label text-[10px] text-zinc-500">
+                Waiting for you to place a bet
+              </p>
+              <p
+                className="mt-2 font-display"
+                style={{
+                  fontSize: "clamp(28px, 4.5vw, 44px)",
+                  color: "var(--accent)",
+                  textShadow: "0 0 22px rgba(247, 183, 49, 0.35)",
+                }}
+              >
+                Use the bet slip →
+              </p>
+              <p className="mt-2 font-ui-label text-[10px] text-zinc-600">
+                The debate won't start until you've staked USDC on a side
+              </p>
+            </>
+          )}
         </div>
       </section>
     </main>

@@ -79,15 +79,13 @@ export async function POST() {
     const { kit, adapter } = getKit()
     for (const p of planned) {
       try {
-        // Real onchain transfer from escrow (= treasury) → winner.
-        const result = (await kit.unifiedBalance.spend({
+        // Real on-chain transfer from escrow (= treasury) → winner.
+        // Same-chain Arc → Arc uses kit.send (no facilitator).
+        const result = (await kit.send({
+          from: { adapter, chain: "Arc_Testnet" },
+          to: p.bet.walletAddress,
           amount: p.payoutAmount,
-          from: { adapter },
-          to: {
-            adapter,
-            chain: "Arc_Testnet",
-            recipientAddress: p.bet.walletAddress,
-          },
+          token: "USDC",
         })) as SpendResult
 
         if (!result?.txHash) {

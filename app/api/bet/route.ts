@@ -81,32 +81,29 @@ export async function POST(req: Request) {
       explorerUrl = explorerUrl ?? explorerLink(txHash)
     } else {
       // Custodial path (email-mode users have no signing wallet of their
-      // own): the treasury executes a real onchain unifiedBalance.spend
-      // → escrow on the user's behalf. Treasury must have testnet USDC.
+      // own): the treasury executes a real on-chain USDC transfer →
+      // escrow on the user's behalf. Same-chain Arc → Arc, so we use
+      // kit.send directly (kit.unifiedBalance.spend routes through
+      // Circle Gateway's facilitator which is currently flaky on the
+      // Arc RPC check — and we don't need cross-chain sourcing here).
       try {
         const { kit, adapter } = getKit()
-        const result = (await kit.unifiedBalance.spend({
+        const result = (await kit.send({
+          from: { adapter, chain: "Arc_Testnet" },
+          to: escrow,
           amount,
-          from: { adapter },
-          to: {
-            adapter,
-            chain: "Arc_Testnet",
-            recipientAddress: escrow,
-          },
+          token: "USDC",
         })) as SpendResult
 
         if (!result?.txHash) {
           return NextResponse.json(
-            {
-              error: "onchain spend produced no txHash",
-              detail: result,
-            },
+            { error: "onchain transfer produced no txHash", detail: result },
             { status: 502 },
           )
         }
         if (result.state && result.state !== "success") {
           return NextResponse.json(
-            { error: `onchain spend state=${result.state}` },
+            { error: `onchain transfer state=${result.state}` },
             { status: 502 },
           )
         }
@@ -114,13 +111,15 @@ export async function POST(req: Request) {
         explorerUrl = result.explorerUrl ?? explorerLink(txHash)
       } catch (err: any) {
         const msg = String(err?.message ?? err)
-        const insufficient =
-          /insufficient|balance|exceeds/i.test(msg)
+        const insufficient = /insufficient|balance|exceeds/i.test(msg)
+        const networkFail = /network connection|rpc|timeout|econnrefused/i.test(msg)
         return NextResponse.json(
           {
             error: insufficient
               ? "treasury wallet has insufficient USDC — fund it from the Arc faucet"
-              : "onchain spend failed",
+              : networkFail
+                ? "Arc testnet RPC unreachable — try again in a moment or set NEXT_PUBLIC_ARC_RPC_URL to a working endpoint"
+                : "onchain transfer failed",
             detail: msg,
           },
           { status: insufficient ? 402 : 500 },

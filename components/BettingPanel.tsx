@@ -8,12 +8,6 @@ type Side = "A" | "B"
 
 type Props = {
   walletAddress: string
-  // When the betting panel is rendered inside the Lobby, the host passes
-  // its countdown so the panel can show "debate starts in N…". Once the
-  // countdown hits 0 the host transitions to live and the debate stream
-  // flips server status off "idle" — the panel switches to the LOCKED
-  // view automatically via the existing /api/debate/state poll.
-  countdownSeconds?: number | null
 }
 
 type Placed = {
@@ -68,10 +62,7 @@ function useDebateRound(): DebateState | null {
   return s
 }
 
-export default function BettingPanel({
-  walletAddress,
-  countdownSeconds,
-}: Props) {
+export default function BettingPanel({ walletAddress }: Props) {
   const totals = usePotTotals()
   const debate = useDebateRound()
   const [side, setSide] = useState<Side | null>(null)
@@ -408,40 +399,6 @@ export default function BettingPanel({
         </span>
       </div>
 
-      {/* Lobby countdown — only shown while the host (Lobby) is ticking */}
-      {typeof countdownSeconds === "number" && countdownSeconds > 0 && (
-        <div
-          className={`rounded-md border px-3 py-2 flex items-center justify-between gap-3 ${
-            countdownSeconds <= 5
-              ? "border-[color:var(--bear)]/50 bg-[color:var(--bear)]/10"
-              : "border-[color:var(--accent)]/50 bg-[color:var(--accent-soft)]"
-          }`}
-        >
-          <div>
-            <p className="font-ui-label text-[10px] text-zinc-200">
-              Place your bet
-            </p>
-            <p className="text-[11px] text-zinc-400">
-              Debate starts in
-            </p>
-          </div>
-          <span
-            className="font-display text-3xl tabular-nums leading-none"
-            style={{
-              color:
-                countdownSeconds <= 5
-                  ? "var(--bear)"
-                  : "var(--accent)",
-              textShadow:
-                countdownSeconds <= 5
-                  ? "0 0 14px rgba(255,59,59,0.4)"
-                  : "0 0 14px rgba(247,183,49,0.4)",
-            }}
-          >
-            {countdownSeconds}s
-          </span>
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-2">
         <FighterButton
