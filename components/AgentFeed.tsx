@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import HypeMeter from "./HypeMeter"
+import AgentVisualizer from "./AgentVisualizer"
 
 type Props = {
   topic?: string
@@ -214,6 +215,16 @@ function AgentCard({
       : Math.round(tweenedConfidence).toString().padStart(2, "0")
 
   return (
+    <div className="flex flex-col">
+      {/* 3D visualizer — sits above the text card */}
+      <div className="flex justify-center pt-1 pb-3">
+        <AgentVisualizer
+          side={team}
+          isSpeaking={state.speaking}
+          intensity={state.confidence}
+        />
+      </div>
+
     <div
       className="flex flex-col rounded-lg border bg-[color:var(--bg-card)] overflow-hidden"
       style={{ borderColor: state.speaking ? color : "var(--border)" }}
@@ -313,6 +324,7 @@ function AgentCard({
           </p>
         )}
       </div>
+    </div>
     </div>
   )
 }
