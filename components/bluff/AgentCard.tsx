@@ -51,10 +51,10 @@ export default function AgentCard({
     : ""
 
   const cardInner = (
-    <div className={`flip-3d deal-in ${hoverWrap}`}>
-      <div className={`flip-inner ${flipped ? "flipped" : ""}`}>
-        <div className={`flip-face bluff-card ${cardTone} ${speakingTone}${winnerRing}${selectedRing}`}>
-          <div className="bluff-card-inner flex flex-col items-center gap-4">
+    <div className={`flip-3d deal-in h-full ${hoverWrap}`}>
+      <div className={`flip-inner h-full ${flipped ? "flipped" : ""}`}>
+        <div className={`flip-face bluff-card h-full ${cardTone} ${speakingTone}${winnerRing}${selectedRing}`}>
+          <div className="bluff-card-inner flex h-full flex-col items-center gap-4">
             <div className="flex w-full items-center justify-between">
               <span className="font-display text-lg tracking-wide" style={{ color: `var(${accentVar})` }}>
                 ◆ {label}
@@ -72,7 +72,11 @@ export default function AgentCard({
               isSpeaking={isSpeaking}
               intensity={isSpeaking ? 80 : 20}
             />
-            <div className="w-full">{children}</div>
+            {/* Claim area — flex-grow + min-height pins the card height
+                regardless of how long the streamed text ends up. */}
+            <div className="flex w-full flex-1 items-start justify-center" style={{ minHeight: 220 }}>
+              {children}
+            </div>
             {selectable && hint && (
               <div
                 className="bluff-tap-hint w-full rounded-xl border-2 px-3 py-2 text-center font-display text-base tracking-wide"
@@ -114,7 +118,7 @@ export default function AgentCard({
       type="button"
       onClick={() => onSelect?.(agent)}
       aria-label={`Bet on Agent ${agent} as the truth-teller`}
-      className="block w-full text-left"
+      className="block h-full w-full text-left"
     >
       {cardInner}
     </button>
