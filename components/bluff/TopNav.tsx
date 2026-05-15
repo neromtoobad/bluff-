@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import ConnectButton from "./ConnectButton"
 
 type NavItem = { href: string; label: string; primary?: boolean }
@@ -21,23 +22,47 @@ function isActive(pathname: string, href: string) {
 
 export default function TopNav({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname() || "/"
+  const [open, setOpen] = useState(false)
+
+  // Close the drawer on route change.
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  // Lock body scroll while the drawer is open.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
 
   return (
-    <nav className="relative z-30 flex items-center justify-between gap-4 px-6 py-4">
+    <nav className="relative z-30 flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
       <Link
         href="/"
-        className="group flex items-center gap-3"
+        className="group flex min-w-0 items-center gap-2 sm:gap-3"
         aria-label="BLUFF home"
       >
         <span
           className={`jackpot-title font-display tracking-wide leading-none ${
-            compact ? "text-3xl md:text-4xl" : "text-4xl md:text-6xl"
+            compact
+              ? "text-[26px] sm:text-3xl md:text-4xl"
+              : "text-[30px] sm:text-4xl md:text-6xl"
           }`}
         >
-          BL<span className="text-[color:var(--lime)]" style={{ WebkitTextStroke: "0", textShadow: "0 0 20px rgba(124,214,36,0.7)" }}>◯</span>FF
+          BL<span
+            className="text-[color:var(--lime)]"
+            style={{ WebkitTextStroke: "0", textShadow: "0 0 20px rgba(124,214,36,0.7)" }}
+          >◯</span>FF
         </span>
         <span className="arc-live-pill hidden items-center gap-2 rounded-full border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--lime)] md:inline-flex">
           <span className="arc-live-dot" /> LIVE ON ARC TESTNET
+        </span>
+        <span className="arc-live-pill inline-flex items-center gap-1.5 rounded-full border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 px-2 py-0.5 font-ui-label text-[8px] tracking-widest text-[color:var(--lime)] md:hidden">
+          <span className="arc-live-dot" /> ARC
         </span>
       </Link>
 
@@ -73,7 +98,72 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
 
       <div className="flex items-center gap-2">
         <ConnectButton />
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Toggle menu"
+          aria-expanded={open}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 text-[color:var(--text)] md:hidden"
+        >
+          <svg
+            width="18"
+            height="14"
+            viewBox="0 0 18 14"
+            fill="none"
+            aria-hidden
+          >
+            {open ? (
+              <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="3" x2="15" y2="11" />
+                <line x1="15" y1="3" x2="3" y2="11" />
+              </g>
+            ) : (
+              <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="2" y1="3" x2="16" y2="3" />
+                <line x1="2" y1="7" x2="16" y2="7" />
+                <line x1="2" y1="11" x2="16" y2="11" />
+              </g>
+            )}
+          </svg>
+        </button>
       </div>
+
+      {/* Mobile drawer */}
+      {open && (
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            aria-hidden
+          />
+          <div className="fixed inset-x-3 top-20 z-50 rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface-2)]/95 p-3 shadow-[0_24px_70px_-20px_rgba(0,0,0,0.8)] backdrop-blur md:hidden">
+            <ul className="space-y-2">
+              {NAV.map((item) => {
+                const active = isActive(pathname, item.href)
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={
+                        item.primary
+                          ? "lime-cta block w-full rounded-xl px-4 py-3 text-center font-display text-xl tracking-wide"
+                          : `block w-full rounded-xl border border-[color:var(--border)] bg-black/30 px-4 py-3 text-center font-display text-lg tracking-tight transition ${
+                              active
+                                ? "text-[color:var(--gold-1)]"
+                                : "text-[color:var(--text)]"
+                            }`
+                      }
+                    >
+                      {item.label.toUpperCase()}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </>
+      )}
     </nav>
   )
 }

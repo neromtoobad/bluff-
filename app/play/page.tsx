@@ -359,7 +359,7 @@ export default function PlayPage() {
 
       <TopNav compact />
 
-      <div className="relative z-10 flex items-center justify-end gap-3 px-6 pb-2">
+      <div className="relative z-10 flex items-center justify-end gap-3 px-4 pb-2 sm:px-6">
         <StreakBadge streak={streak} />
         {(phase === "streaming" || (phase === "betting" && !bet)) && (
           <span className="rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-display text-lg text-[color:var(--gold-1)]">
@@ -373,7 +373,7 @@ export default function PlayPage() {
         )}
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 sm:gap-6 sm:px-6">
 
       {phase === "idle" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -402,11 +402,11 @@ export default function PlayPage() {
 
       {phase !== "idle" && phase !== "loading" && (
         <>
-          <section className="relative z-10 rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-4 backdrop-blur">
+          <section className="relative z-10 rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-3 backdrop-blur sm:p-4">
             <p className="font-ui-label text-[10px] uppercase tracking-widest text-[color:var(--lime)]">
               ◆ CLAIM UNDER DEBATE
             </p>
-            <p className="mt-1 font-display text-2xl leading-snug">{topic}</p>
+            <p className="mt-1 font-display text-lg leading-snug sm:text-2xl">{topic}</p>
           </section>
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2">

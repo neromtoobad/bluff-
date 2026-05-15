@@ -1,5 +1,5 @@
 import "./globals.css"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Bebas_Neue, IBM_Plex_Mono, DM_Sans } from "next/font/google"
 import SoundController from "@/components/SoundController"
 
@@ -25,6 +25,15 @@ const dm = DM_Sans({
 export const metadata: Metadata = {
   title: "BLUFF — Spot the AI lie",
   description: "Two AI agents make a claim. One is lying. Bet USDC, win up to 5×.",
+  themeColor: "#0e1a14",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0e1a14",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

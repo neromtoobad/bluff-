@@ -2,6 +2,9 @@ import Link from "next/link"
 import TopNav from "@/components/bluff/TopNav"
 import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
 
+export const dynamic = "force-static"
+export const revalidate = false
+
 const STEPS: Array<{ n: string; title: string; body: string }> = [
   {
     n: "01",
@@ -39,15 +42,15 @@ export default function RulesPage() {
       <div className="forest-ridge" />
       <TopNav compact />
 
-      <section className="relative z-10 mx-auto max-w-4xl px-6 pt-8">
-        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
+      <section className="relative z-10 mx-auto max-w-4xl px-4 pt-6 sm:px-6 sm:pt-8">
+        <p className="font-ui-label text-[10px] tracking-widest text-[color:var(--lime)] sm:text-[11px]">
           ◆ HOW TO PLAY
         </p>
-        <h1 className="jackpot-title font-display text-7xl leading-tight md:text-8xl">
+        <h1 className="jackpot-title font-display text-5xl leading-tight sm:text-7xl md:text-8xl">
           RULES
         </h1>
-        <p className="mt-1 font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)]">
-          One round, sixty seconds, two AI agents, one liar. You spot the bluff.
+        <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] sm:text-[11px]">
+          One round · sixty seconds · two AI agents · one liar.
         </p>
 
         <ol className="mt-8 space-y-4">
@@ -95,16 +98,16 @@ export default function RulesPage() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Link
             href="/play?auto=1"
-            className="lime-cta rounded-2xl px-10 py-4 font-display text-3xl tracking-tight"
+            className="lime-cta flex-1 rounded-2xl px-6 py-4 text-center font-display text-2xl tracking-tight sm:px-10 sm:text-3xl"
           >
             DEAL ME IN
           </Link>
           <Link
             href="/faq"
-            className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-black/30 px-8 py-4 font-display text-2xl tracking-tight text-[color:var(--text)] hover:bg-black/45"
+            className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-black/30 px-6 py-4 text-center font-display text-xl tracking-tight text-[color:var(--text)] hover:bg-black/45 sm:px-8 sm:text-2xl"
           >
             FAQ →
           </Link>

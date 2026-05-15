@@ -58,21 +58,21 @@ export default function LeadersPage() {
       <div className="forest-ridge" />
       <TopNav compact />
 
-      <section className="relative z-10 mx-auto max-w-4xl px-6 pt-8">
-        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
+      <section className="relative z-10 mx-auto max-w-4xl px-4 pt-6 sm:px-6 sm:pt-8">
+        <p className="font-ui-label text-[10px] tracking-widest text-[color:var(--lime)] sm:text-[11px]">
           ◆ HALL OF DEGENS
         </p>
-        <h1 className="jackpot-title font-display text-7xl leading-tight md:text-8xl">
+        <h1 className="jackpot-title font-display text-5xl leading-tight sm:text-7xl md:text-8xl">
           LEADERS
         </h1>
-        <p className="mt-1 font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)]">
-          Top spotters by streak and total USDC won. Updates every 5 seconds.
+        <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] sm:text-[11px]">
+          Top spotters by streak and total USDC won. Updates every 5s.
         </p>
 
-        <div className="mt-6 flex rounded-full border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-1 text-[11px] backdrop-blur">
+        <div className="mt-6 flex flex-col rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-1 text-[11px] backdrop-blur sm:flex-row sm:rounded-full">
           <button
             onClick={() => setTab("streak")}
-            className={`flex-1 rounded-full px-4 py-2 font-display text-base tracking-wide transition ${
+            className={`flex-1 rounded-xl px-4 py-2 font-display text-base tracking-wide transition sm:rounded-full ${
               tab === "streak"
                 ? "bg-[color:var(--gold-2)]/25 text-[color:var(--gold-1)]"
                 : "text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
@@ -82,7 +82,7 @@ export default function LeadersPage() {
           </button>
           <button
             onClick={() => setTab("winnings")}
-            className={`flex-1 rounded-full px-4 py-2 font-display text-base tracking-wide transition ${
+            className={`flex-1 rounded-xl px-4 py-2 font-display text-base tracking-wide transition sm:rounded-full ${
               tab === "winnings"
                 ? "bg-[color:var(--lime)]/25 text-[color:var(--lime)]"
                 : "text-[color:var(--text-mute)] hover:text-[color:var(--text)]"

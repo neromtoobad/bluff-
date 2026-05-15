@@ -61,19 +61,19 @@ export default function LobbyPage() {
       <div className="forest-ridge" />
       <TopNav compact />
 
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pt-2 text-center">
-        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
+      <section className="relative z-10 mx-auto max-w-6xl px-4 pt-2 text-center sm:px-6">
+        <p className="font-ui-label text-[10px] tracking-widest text-[color:var(--lime)] sm:text-[11px]">
           ◆ JACKPOT TONIGHT
         </p>
-        <h1 className="jackpot-title font-display text-7xl leading-tight md:text-9xl">
+        <h1 className="jackpot-title font-display text-5xl leading-tight sm:text-7xl md:text-9xl">
           $5.00 × MULTI
         </h1>
-        <p className="mt-1 font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)]">
+        <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] sm:text-[11px]">
           Hit a 10-streak to unlock max payout
         </p>
       </section>
 
-      <section className="relative z-10 mx-auto mt-6 grid max-w-6xl grid-cols-1 gap-6 px-6 lg:grid-cols-[1fr_340px]">
+      <section className="relative z-10 mx-auto mt-6 grid max-w-6xl grid-cols-1 gap-5 px-4 sm:px-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-5">
           <StatsCard walletAddress={walletAddress} />
 
@@ -121,7 +121,7 @@ export default function LobbyPage() {
 
           <Link
             href="/play?auto=1"
-            className="lime-cta block w-full rounded-2xl px-10 py-8 text-center font-display text-5xl tracking-wide"
+            className="lime-cta block w-full rounded-2xl px-6 py-6 text-center font-display text-4xl tracking-wide sm:px-10 sm:py-8 sm:text-5xl"
           >
             PLAY NOW
           </Link>
