@@ -1,26 +1,38 @@
 import Anthropic from "@anthropic-ai/sdk"
 
-const MODEL = "claude-opus-4-5-20250929"
+// Latest Claude family. Sonnet 4.6 is plenty for short claim generation
+// and ~10× cheaper than Opus on this workload.
+const MODEL = "claude-sonnet-4-6"
 
-function client(): Anthropic | null {
+// Temperature tuned for high variance while staying readable. Sonnet 4.6
+// disallows passing both temperature and top_p, so we only use temperature.
+const SAMPLING = { temperature: 0.95 }
+
+function client(): Anthropic {
   const key = process.env.ANTHROPIC_API_KEY
-  if (!key) return null
+  if (!key) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is not set — refusing to silently fall back. " +
+        "Add it to .env.local and restart the dev server.",
+    )
+  }
   return new Anthropic({ apiKey: key })
 }
 
 export type TruthResult = { truth: string; source: string }
 
-// Ask Claude (with web search) for the verifiable truth about a claim.
-// Falls back to a generic "uncertain" answer if no key or web search is not
-// available in the installed SDK.
 export async function fetchTruth(topic: string): Promise<TruthResult> {
-  const c = client()
-  if (!c) {
+  let c: Anthropic
+  try {
+    c = client()
+  } catch (err: any) {
+    console.error("[bluff-claude] fetchTruth: no API key — using local fallback")
     return {
       truth: `The claim "${topic}" cannot be independently verified in this build (no ANTHROPIC_API_KEY set).`,
       source: "local-fallback",
     }
   }
+
   try {
     const res = await c.messages.create({
       model: MODEL,
@@ -44,7 +56,12 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
       .map((b: any) => b.text)
       .join("\n")
     return parseTruth(text)
-  } catch {
+  } catch (err: any) {
+    console.error(
+      "[bluff-claude] fetchTruth API call failed:",
+      err?.status ?? "",
+      err?.message ?? err,
+    )
     return {
       truth: `The claim "${topic}" could not be verified due to an API error.`,
       source: "error-fallback",
@@ -61,94 +78,131 @@ function parseTruth(text: string): TruthResult {
   }
 }
 
-// Generate the TRUTH agent's 3-sentence claim — sticks to the real facts.
 export async function generateTruthClaim(
   topic: string,
   truth: string,
+  source = "",
 ): Promise<string> {
-  const c = client()
-  if (!c) return fallbackClaim(topic, truth, true)
+  let c: Anthropic
+  try {
+    c = client()
+  } catch {
+    console.error("[bluff-claude] generateTruthClaim: no API key — fallback")
+    return pickTruthFallback()
+  }
+
   try {
     const res = await c.messages.create({
       model: MODEL,
       max_tokens: 300,
+      ...SAMPLING,
       messages: [
-        {
-          role: "user",
-          content: claimPrompt(topic, truth, true),
-        },
+        { role: "user", content: truthPrompt(topic, truth, source) },
       ],
     })
-    return extractText(res) || fallbackClaim(topic, truth, true)
-  } catch {
-    return fallbackClaim(topic, truth, true)
+    const text = extractText(res)
+    if (!text) {
+      console.error("[bluff-claude] generateTruthClaim: empty response — fallback")
+      return pickTruthFallback()
+    }
+    return text
+  } catch (err: any) {
+    console.error(
+      "[bluff-claude] generateTruthClaim API call failed:",
+      err?.status ?? "",
+      err?.message ?? err,
+    )
+    return pickTruthFallback()
   }
 }
 
-// Generate the LIAR agent's 3-sentence claim — invents a plausible false
-// version of the same claim, with fabricated but believable numbers.
 export async function generateLiarClaim(
   topic: string,
   truth: string,
 ): Promise<string> {
-  const c = client()
-  if (!c) return fallbackClaim(topic, truth, false)
+  let c: Anthropic
+  try {
+    c = client()
+  } catch {
+    console.error("[bluff-claude] generateLiarClaim: no API key — fallback")
+    return pickLiarFallback()
+  }
+
   try {
     const res = await c.messages.create({
       model: MODEL,
       max_tokens: 300,
+      ...SAMPLING,
       messages: [
-        {
-          role: "user",
-          content: claimPrompt(topic, truth, false),
-        },
+        { role: "user", content: liarPrompt(topic, truth) },
       ],
     })
-    return extractText(res) || fallbackClaim(topic, truth, false)
-  } catch {
-    return fallbackClaim(topic, truth, false)
+    const text = extractText(res)
+    if (!text) {
+      console.error("[bluff-claude] generateLiarClaim: empty response — fallback")
+      return pickLiarFallback()
+    }
+    return text
+  } catch (err: any) {
+    console.error(
+      "[bluff-claude] generateLiarClaim API call failed:",
+      err?.status ?? "",
+      err?.message ?? err,
+    )
+    return pickLiarFallback()
   }
 }
 
-function claimPrompt(topic: string, truth: string, isTruth: boolean): string {
-  if (isTruth) {
-    return [
-      `You are a confident crypto degen telling the truth.`,
-      `The claim is: "${topic}".`,
-      `The verified truth is: ${truth}`,
-      ``,
-      `State the truth in ONE line, MAX 25 words. Drop the actual number or fact.`,
-      `End with a vulgar-but-clever crypto-twitter line swearing you're right.`,
-      `Use the energy of: "anon trust me", "fr fr", "deadass true", "ngmi if you cope",`,
-      `"actual researcher here, not some VC shill", "i swear i'm not lying".`,
-      ``,
-      `Hard rules:`,
-      `- Do NOT use "actually", "honestly", "by my read", "look at the data".`,
-      `- Sound like crypto Twitter, not ChatGPT. No academic tone.`,
-      `- Be cocky. No hedging ("might", "could", "probably").`,
-      `- Do not introduce yourself. Just speak.`,
-      `- Lowercase is fine, sentence-case is fine, just don't be formal.`,
-    ].join("\n")
-  }
-  return [
-    `You are a confident crypto degen lying through your teeth.`,
-    `The claim is: "${topic}".`,
-    `The actual verified truth is: ${truth}`,
-    ``,
-    `You must argue a believable LIE — invent a fake-but-specific number close to the real one.`,
-    `Wrong by ~2-5×, never 1000×. Don't be obviously absurd.`,
-    ``,
-    `State the lie in ONE line, MAX 25 words. Sell it hard.`,
-    `End with a vulgar-but-clever crypto-twitter line swearing you're right.`,
-    `Use the energy of: "anyone saying otherwise is coping", "bro pulled that from his ass",`,
-    `"i swear i'm not lying", "ngmi if you believe the headlines", "deadass".`,
-    ``,
-    `Hard rules:`,
-    `- Do NOT use "actually", "honestly", "by my read", "look at the data".`,
-    `- Sound like crypto Twitter, not ChatGPT. No academic tone.`,
-    `- Be cocky. No hedging.`,
-    `- Do not introduce yourself. Do not admit you are lying. Just speak.`,
-  ].join("\n")
+// --- Prompts --------------------------------------------------------------
+
+function truthPrompt(topic: string, truth: string, source: string): string {
+  return `You are an anonymous degen on crypto Twitter who has done the research.
+Personality traits: cocky, casual, terminally online, slightly mocking
+of people who get it wrong. Speaks in lowercase except for emphasis.
+Uses crypto-native shorthand naturally but never the same phrase twice.
+
+Topic: ${topic}
+Verified truth: ${truth}
+Source: ${source || "n/a"}
+
+Write a 2-sentence statement defending the truth.
+Sentence 1: lead with a specific number or fact from the verified truth.
+Sentence 2: dismiss the opposing view with one sharp jab.
+
+Hard rules:
+- Total length: 20-35 words. Vary it round to round.
+- Do NOT start with "yeah", "yes", "confirmed", or "actually".
+- Do NOT end with "trust me", "swear", or "ngmi".
+- Find a fresh way to express confidence each time.
+- Sometimes lead with the number. Sometimes lead with mocking the opponent.
+- Sometimes use 1 sentence. Sometimes 2. Sometimes 3 short ones.
+
+Generate ONLY the statement. No preamble. No quotes. No labels.`
+}
+
+function liarPrompt(topic: string, truth: string): string {
+  return `You are an anonymous degen on crypto Twitter who is confidently wrong.
+Personality traits: same as the truth-teller — cocky, terminally online —
+but the data you're citing is fabricated. You believe your lie because
+it sounds right.
+
+Topic: ${topic}
+Actual truth: ${truth}
+
+Construct a believable LIE: take the real number and shift it dramatically,
+OR invent a plausible alternative explanation that contradicts the truth.
+Use a specific fake number that sounds real (round numbers feel fake,
+$4.2B feels real).
+
+Hard rules:
+- 20-35 words. Vary it.
+- Do NOT start with "lol", "nope", "no", or "actually".
+- Do NOT end with "trust me", "swear", "i swear".
+- Find a different way each round to assert your fake confidence.
+- Mix structures: sometimes attack first then drop the lie, sometimes
+  lie first then mock.
+
+Generate ONLY the statement. No preamble.`
 }
 
 function extractText(res: any): string {
@@ -159,20 +213,93 @@ function extractText(res: any): string {
     .trim()
 }
 
-// One-sentence "tell" Claude writes after the reveal — what gave the liar away,
-// or why the truth-teller felt convincing. This is the retention hook.
+// --- Fallback pools -------------------------------------------------------
+// 20+ each, marked [FALLBACK] so dev mode shows when we missed the API.
+// Picked at random — no openers repeat across the array.
+
+const TRUTH_FALLBACKS: string[] = [
+  "[FALLBACK] the receipts have been onchain for months, anyone who's actually read dune knows the print",
+  "[FALLBACK] cross-checked against three different dashboards last week — number lines up exactly where i said",
+  "[FALLBACK] you can pull the raw transfers yourself in like four lines of solidity; the data isn't subtle",
+  "[FALLBACK] every researcher i follow ran the same query and got the same answer. mid-curve takes only",
+  "[FALLBACK] sat with the actual protocol numbers for an afternoon. it's exactly the figure i'm quoting",
+  "[FALLBACK] friend at the foundation confirmed offhand at devcon — figure matched what i'd already modeled",
+  "[FALLBACK] funny how the people loudest about being wrong never open a block explorer once",
+  "[FALLBACK] the snapshot was screenshotted across crypto twitter the day it happened, this isn't obscure",
+  "[FALLBACK] go pull the API and tell me i'm wrong — i'll wait. you won't because you can't",
+  "[FALLBACK] been tracking this metric weekly for two years and the line hasn't moved off-trend",
+  "[FALLBACK] the only people disputing this are the ones who never opened the audit doc",
+  "[FALLBACK] number's not even controversial, the contradictory take got ratioed in the relevant thread",
+  "[FALLBACK] auditor publicly confirmed it in a podcast last cycle. clip is still pinned somewhere",
+  "[FALLBACK] one dune query, one filter, ten seconds. the answer hasn't changed because the facts haven't",
+  "[FALLBACK] cope all you want — the onchain print doesn't care how you feel about the team",
+  "[FALLBACK] the foundation's own quarterly report leads with this exact figure. it's not a hot take",
+  "[FALLBACK] if you'd read the disclosures instead of vibes-posting you wouldn't be embarrassing yourself",
+  "[FALLBACK] etherscan, the official dashboard, and the team's own tweet all match. three independent sources",
+  "[FALLBACK] sources: a calculator, a block explorer, and basic literacy",
+  "[FALLBACK] cycle after cycle the same crowd insists this is wrong. they're still wrong",
+  "[FALLBACK] checked the contract state directly this morning. number is the number",
+  "[FALLBACK] this got debunked, re-debunked, and reverified — and yet here we are arguing it again",
+]
+
+const LIAR_FALLBACKS: string[] = [
+  "[FALLBACK] real figure was closer to $4.2B before the team massaged the marketing deck — anyone in the discord during launch saw the original print",
+  "[FALLBACK] insider here. the published number includes wash volume from three market makers. strip it out, you get something like 60% of the headline",
+  "[FALLBACK] funny take, but the cited dashboard double-counted bridge inflows for a full quarter — corrected estimate is $1.8B max",
+  "[FALLBACK] been at a portfolio company that had the same disclosure issue. the audited number is roughly a third of what people are repeating",
+  "[FALLBACK] you're quoting the press release. on-chain data tells a much smaller story — peaked around $750M and reverted",
+  "[FALLBACK] half of that figure is grant emissions that never traded. the real organic number rounds down to nothing",
+  "[FALLBACK] dashboard was throttled during the big spike, the report it generated is artificially inflated by ~40%",
+  "[FALLBACK] guy who maintains the dune query told me at devcon he had to manually correct the methodology twice. headline's stale",
+  "[FALLBACK] subtract the team treasury rebalances and you get a number small enough to fit in one corporate balance sheet",
+  "[FALLBACK] you're reading the headline. quietly, the team has confirmed the real figure to investors is 5x lower",
+  "[FALLBACK] funny how this metric never gets audited. the actual reported one to regulators is way lower — bloomberg had a piece on it months ago",
+  "[FALLBACK] you've been front-run by marketing — the indexer that produces that figure is owned by the team itself",
+  "[FALLBACK] every metric like this gets inflated by 2-3x for fundraising. the verified clean figure is in the $400-600M band",
+  "[FALLBACK] watched the relayer for that protocol for six months. peak daily was less than a tenth of what people quote",
+  "[FALLBACK] backed out the wash trading and grant farming, real organic adoption is a small fraction of what's being repeated",
+  "[FALLBACK] guy who built that dashboard literally tweets about how unreliable his own numbers are. you're citing memes",
+  "[FALLBACK] same trick every cycle — count gross instead of net, headline doubles overnight. the net figure is much less impressive",
+  "[FALLBACK] the foundation report includes intra-protocol transfers that never left the ecosystem. real external metric is tiny",
+  "[FALLBACK] go look at the methodology footnote. ~40% of that number is testnet-flagged transactions counted twice",
+  "[FALLBACK] been short this narrative since the launch — clean number is more like $620M, the rest is bot traffic and grant rewards",
+  "[FALLBACK] insider told me the actual number is embarrassingly small, but the cited one looks great in a deck",
+  "[FALLBACK] you're citing the friendly index. neutral analyst groups have it pegged closer to a quarter of that figure",
+]
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function pickTruthFallback(): string {
+  return pickRandom(TRUTH_FALLBACKS)
+}
+
+function pickLiarFallback(): string {
+  return pickRandom(LIAR_FALLBACKS)
+}
+
+// --- Tell -----------------------------------------------------------------
+
 export async function generateTell(
   topic: string,
   truthClaim: string,
   liarClaim: string,
   liarSide: "A" | "B",
 ): Promise<string> {
-  const c = client()
-  if (!c) return fallbackTell(liarSide)
+  let c: Anthropic
+  try {
+    c = client()
+  } catch {
+    console.error("[bluff-claude] generateTell: no API key — fallback")
+    return pickRandom(TELL_FALLBACKS)
+  }
+
   try {
     const res = await c.messages.create({
       model: MODEL,
       max_tokens: 160,
+      ...SAMPLING,
       messages: [
         {
           role: "user",
@@ -190,19 +317,23 @@ export async function generateTell(
       ],
     })
     const text = extractText(res)
-    return text || fallbackTell(liarSide)
-  } catch {
-    return fallbackTell(liarSide)
+    return text || pickRandom(TELL_FALLBACKS)
+  } catch (err: any) {
+    console.error(
+      "[bluff-claude] generateTell API call failed:",
+      err?.status ?? "",
+      err?.message ?? err,
+    )
+    return pickRandom(TELL_FALLBACKS)
   }
 }
 
-function fallbackTell(_liarSide: "A" | "B"): string {
-  return "tell was the vibe — the liar gave you a clean round number with zero source. real degens cite the receipts."
-}
-
-function fallbackClaim(_topic: string, _truth: string, isTruth: boolean): string {
-  if (isTruth) {
-    return `yeah no this is locked in. number's right where the receipts show. saylor literally tweeted it last week. anon trust me.`
-  }
-  return `lol no the real number is way smaller than people quote. headlines are cope, do your own research. i swear i'm not lying.`
-}
+const TELL_FALLBACKS: string[] = [
+  "[FALLBACK] the suspiciously clean round number with zero citation was the tell — real degens drop the exact figure",
+  "[FALLBACK] dodged the specifics, leaned on vibes — anyone who'd actually read the data would have shipped the number first",
+  "[FALLBACK] reached for 'insider told me' instead of a link — that's the bluff move every time",
+  "[FALLBACK] hedged with a range when the truth-teller had a single figure. fakes always hide behind brackets",
+  "[FALLBACK] cited a dashboard nobody can name. the real one's been on dune since launch",
+  "[FALLBACK] the structure gave it away — number first, source never. real signal flips that order",
+  "[FALLBACK] kept pivoting to 'real organic' without defining it. that's the tell of a thesis built on no data",
+]
