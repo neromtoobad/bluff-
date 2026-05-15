@@ -6,6 +6,7 @@ import StatsCard from "@/components/bluff/StatsCard"
 import Leaderboard from "@/components/bluff/Leaderboard"
 import WinnersTicker from "@/components/bluff/WinnersTicker"
 import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
+import ConnectButton from "@/components/bluff/ConnectButton"
 
 type DailyStatus = { claimed: boolean; amount: string }
 type ClaimResult = {
@@ -70,12 +71,7 @@ export default function LobbyPage() {
             Play
           </Link>
         </nav>
-        <Link
-          href="/play?auto=1"
-          className="lime-cta rounded-lg px-4 py-2 font-ui-label text-[11px] tracking-widest"
-        >
-          {walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : "Select Wallet"}
-        </Link>
+        <ConnectButton />
       </header>
 
       <div className="relative z-10 text-center">

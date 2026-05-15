@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
+import ConnectButton from "@/components/bluff/ConnectButton"
 
 export default function HomePage() {
   return (
@@ -23,12 +24,7 @@ export default function HomePage() {
             Leaderboard
           </Link>
         </div>
-        <Link
-          href="/lobby"
-          className="lime-cta rounded-lg px-4 py-2 font-ui-label text-[11px] tracking-widest"
-        >
-          Select Wallet
-        </Link>
+        <ConnectButton />
       </nav>
 
       <header className="relative z-10 text-center">
