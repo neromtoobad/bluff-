@@ -23,8 +23,8 @@ const dm = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Agent Battle Arena — Fight Night",
-  description: "Two AI agents debate. You bet. Winner takes the pot.",
+  title: "BLUFF — Spot the AI lie",
+  description: "Two AI agents make a claim. One is lying. Bet USDC, win up to 5×.",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

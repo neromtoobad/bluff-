@@ -7,6 +7,8 @@ import BetButtons, { type Pick } from "@/components/bluff/BetButtons"
 import Reveal from "@/components/bluff/Reveal"
 import StreakBadge from "@/components/bluff/StreakBadge"
 import FullscreenFlash from "@/components/bluff/FullscreenFlash"
+import Confetti from "@/components/bluff/Confetti"
+import * as audio from "@/lib/audio"
 
 type Phase = "idle" | "loading" | "streaming" | "betting" | "revealed"
 
@@ -31,7 +33,10 @@ type SettleReceipt = {
   explorerUrl?: string
 }
 
+const NEXT_ROUND_DELAY_SEC = 10
+
 export default function PlayPage() {
+  const [autoStart, setAutoStart] = useState(false)
   const [phase, setPhase] = useState<Phase>("idle")
   const [topic, setTopic] = useState<string>("")
   const [claimA, setClaimA] = useState("")
@@ -41,6 +46,7 @@ export default function PlayPage() {
   const [now, setNow] = useState<number>(Date.now())
   const [bet, setBet] = useState<PlacedBet | null>(null)
   const [reveal, setReveal] = useState<RevealData | null>(null)
+  const [tell, setTell] = useState<string | null>(null)
   const [streak, setStreak] = useState<number>(0)
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [settleReceipt, setSettleReceipt] = useState<SettleReceipt | null>(null)
@@ -48,10 +54,21 @@ export default function PlayPage() {
     | { tone: "win" | "loss"; title: string; subtitle?: string }
     | null
   >(null)
+  const [confetti, setConfetti] = useState(false)
+  const [nextIn, setNextIn] = useState<number | null>(null)
   const roundIdRef = useRef<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
+  const autoStartedRef = useRef(false)
 
-  // Read wallet + streak on mount.
+  // Read ?auto=1 once on mount (client-only — avoids Suspense boundary).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("auto") === "1") setAutoStart(true)
+    } catch {}
+  }, [])
+
+  // Wallet + streak.
   useEffect(() => {
     try {
       const addr = sessionStorage.getItem("arc:walletAddress")
@@ -83,6 +100,7 @@ export default function PlayPage() {
           body: JSON.stringify({ roundId }),
         })
         const json = await res.json()
+        if (json?.tell) setTell(json.tell)
         const receipts = (json?.receipts ?? []) as SettleReceipt[]
         const mine = walletAddress
           ? receipts.find(
@@ -93,35 +111,38 @@ export default function PlayPage() {
           setSettleReceipt(mine)
           setStreak(mine.streakAfter)
           if (mine.won) {
+            setConfetti(true)
+            try { audio.winnerReveal() } catch {}
             setFlash({
               tone: "win",
               title: "HOT STREAK",
               subtitle: `×${mine.multiplier} — PAYOUT $${mine.payout}`,
             })
           } else if (currentBet) {
-            // Loss with prior hot streak gets the "STREAK BROKEN" flash.
             const priorStreak = streak
             if (priorStreak >= 3) {
               setFlash({ tone: "loss", title: "STREAK BROKEN" })
             } else {
               setFlash({ tone: "loss", title: "BLUFF MISSED" })
             }
+            try { audio.roundEnd() } catch {}
           }
         } else if (currentBet) {
-          // No wallet / receipt — fall back to local outcome.
+          // No wallet — local outcome.
           const won = currentBet.pick === liar
           if (won) {
             setStreak((s) => s + 1)
+            setConfetti(true)
+            try { audio.winnerReveal() } catch {}
             setFlash({ tone: "win", title: "YOU WIN" })
           } else {
             if (streak >= 3) setFlash({ tone: "loss", title: "STREAK BROKEN" })
             else setFlash({ tone: "loss", title: "BLUFF MISSED" })
+            try { audio.roundEnd() } catch {}
             setStreak(0)
           }
         }
-      } catch {
-        // Settle is best-effort — reveal already shown.
-      }
+      } catch {}
     },
     [walletAddress, streak],
   )
@@ -134,6 +155,12 @@ export default function PlayPage() {
     setReveal(null)
     setSettleReceipt(null)
     setSpeaking(null)
+    setTell(null)
+    setConfetti(false)
+    setNextIn(null)
+
+    try { audio.roundBell() } catch {}
+    try { audio.startCrowdAmbience(0.04) } catch {}
 
     const res = await fetch("/api/round/start", { method: "POST" })
     if (!res.ok) {
@@ -169,7 +196,6 @@ export default function PlayPage() {
       setReveal(data)
       setPhase("revealed")
       es.close()
-      // Settle on the next tick so we have the most recent bet state.
       setTimeout(() => {
         setBet((current) => {
           settle(roundId, current, data.liar)
@@ -180,40 +206,62 @@ export default function PlayPage() {
     es.onerror = () => es.close()
   }, [settle])
 
+  // Auto-start when navigated from /lobby?auto=1.
+  useEffect(() => {
+    if (autoStart && !autoStartedRef.current && phase === "idle") {
+      autoStartedRef.current = true
+      startRound()
+    }
+  }, [autoStart, phase, startRound])
+
+  // Continuous play: 10-second countdown after reveal → next round.
+  useEffect(() => {
+    if (phase !== "revealed") return
+    setNextIn(NEXT_ROUND_DELAY_SEC)
+    const t = setInterval(() => {
+      setNextIn((n) => {
+        if (n == null) return n
+        if (n <= 1) {
+          clearInterval(t)
+          startRound()
+          return null
+        }
+        return n - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [phase, startRound])
+
   const placeBet = async (pick: Pick, amount: number) => {
     if (phase !== "betting") return
     const roundId = roundIdRef.current
     if (!roundId) return
 
     if (!walletAddress) {
-      // Mock-only flow — no on-chain escrow.
       setBet({ pick, amount, error: "no wallet — simulated bet only" })
       return
     }
 
     setBet({ pick, amount, pending: true })
     try {
-      // Browser-EOA path: spend USDC from the user's wallet directly to escrow.
       let txHash: string | undefined
       let explorerUrl: string | undefined
       const mode = sessionStorage.getItem("arc:walletMode")
-      const escrow = process.env.NEXT_PUBLIC_ARENA_ESCROW_ADDRESS as string | undefined
+      const escrow = process.env.NEXT_PUBLIC_ARENA_ESCROW_ADDRESS as
+        | string
+        | undefined
       if (mode === "browser" && escrow && (window as any).ethereum) {
-        try {
-          const { getBrowserKit } = await import("@/lib/arc")
-          const { kit, adapter } = await getBrowserKit((window as any).ethereum)
-          const result = await kit.send({
-            from: { adapter, chain: "Arc_Testnet" },
-            to: escrow,
-            amount: amount.toFixed(2),
-            token: "USDC",
-          })
-          if (result.state !== "success") throw new Error("transfer not finalized")
-          txHash = result.txHash
-          explorerUrl = result.explorerUrl
-        } catch (err: any) {
-          throw new Error(err?.message ?? "browser-wallet escrow failed")
-        }
+        const { getBrowserKit } = await import("@/lib/arc")
+        const { kit, adapter } = await getBrowserKit((window as any).ethereum)
+        const result = await kit.send({
+          from: { adapter, chain: "Arc_Testnet" },
+          to: escrow,
+          amount: amount.toFixed(2),
+          token: "USDC",
+        })
+        if (result.state !== "success") throw new Error("transfer not finalized")
+        txHash = result.txHash
+        explorerUrl = result.explorerUrl
       }
 
       const res = await fetch("/api/round/bet", {
@@ -240,10 +288,15 @@ export default function PlayPage() {
     }
   }
 
+  const playAgainNow = () => {
+    setNextIn(null)
+    startRound()
+  }
+
   const secondsLeft = Math.max(0, Math.ceil((deadline - now) / 1000))
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-10 bg-[color:var(--bg)]">
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-10">
       <FullscreenFlash
         show={flash != null}
         tone={flash?.tone ?? "win"}
@@ -251,13 +304,20 @@ export default function PlayPage() {
         subtitle={flash?.subtitle}
         onDone={() => setFlash(null)}
       />
+      <Confetti show={confetti} />
 
       <header className="flex items-center justify-between">
-        <h1 className="font-display text-4xl tracking-tight">BLUFF</h1>
+        <h1 className="font-display text-5xl tracking-tight">
+          <span className="text-[color:var(--amber)]">B</span>
+          <span className="text-[color:var(--magenta)]">L</span>
+          <span className="text-[color:var(--cyan)]">U</span>
+          <span className="text-[color:var(--green)]">F</span>
+          <span className="text-[color:var(--amber)]">F</span>
+        </h1>
         <div className="flex items-center gap-3">
           <StreakBadge streak={streak} />
           {(phase === "streaming" || phase === "betting") && (
-            <span className="rounded border border-[color:var(--border-soft)] bg-black/40 px-3 py-1 font-mono text-sm text-white">
+            <span className="rounded border border-[color:var(--border)] bg-black/40 px-3 py-1 font-mono text-sm text-white">
               {secondsLeft}s
             </span>
           )}
@@ -266,37 +326,34 @@ export default function PlayPage() {
 
       {phase === "idle" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <p className="max-w-md text-center font-ui-label text-xs text-[color:var(--text-mute)]">
-            Two agents make a claim. One is lying. You have one minute to spot the bluff.
+          <p className="max-w-md text-center font-ui-label text-xs tracking-widest text-[color:var(--text-mute)]">
+            Two agents make a claim. One is lying. Spot the bluff.
           </p>
           {!walletAddress && (
-            <p className="text-center font-ui-label text-[10px] text-amber-300/80">
-              No wallet connected — bets will run in mock mode.{" "}
+            <p className="text-center font-ui-label text-[10px] text-[color:var(--amber)]/80">
+              No wallet connected — bets run in mock mode.{" "}
               <a href="/" className="underline">
-                Sign in
+                sign in
               </a>
             </p>
           )}
-          <button
-            onClick={startRound}
-            className="rounded-md border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-6 py-3 font-ui-label text-sm text-[color:var(--accent)] hover:bg-[color:var(--accent)]/20"
-          >
-            Start Round
+          <button onClick={startRound} className="play-cta rounded-2xl px-12 py-6 font-display text-4xl tracking-tight">
+            DEAL ME IN
           </button>
         </div>
       )}
 
       {phase === "loading" && (
-        <div className="flex flex-1 items-center justify-center font-ui-label text-xs text-[color:var(--text-mute)]">
-          Researching the truth…
+        <div className="flex flex-1 items-center justify-center font-ui-label text-xs tracking-widest text-[color:var(--cyan)]">
+          ◆ SHUFFLING THE DECK…
         </div>
       )}
 
       {phase !== "idle" && phase !== "loading" && (
         <>
-          <section className="rounded-md border border-[color:var(--border-soft)] bg-black/30 p-4">
-            <p className="font-ui-label text-[10px] uppercase tracking-wider text-[color:var(--text-mute)]">
-              Claim under debate
+          <section className="rounded-2xl border border-[color:var(--border)] bg-black/30 p-4">
+            <p className="font-ui-label text-[10px] uppercase tracking-widest text-[color:var(--cyan)]">
+              ◆ CLAIM UNDER DEBATE
             </p>
             <p className="mt-1 font-display text-2xl leading-snug">{topic}</p>
           </section>
@@ -305,6 +362,7 @@ export default function PlayPage() {
             <AgentCard
               agent="A"
               isSpeaking={speaking === "A"}
+              flipped={phase === "revealed" && reveal?.liar === "A"}
               highlight={
                 phase === "revealed" && reveal
                   ? reveal.liar === "A"
@@ -318,6 +376,7 @@ export default function PlayPage() {
             <AgentCard
               agent="B"
               isSpeaking={speaking === "B"}
+              flipped={phase === "revealed" && reveal?.liar === "B"}
               highlight={
                 phase === "revealed" && reveal
                   ? reveal.liar === "B"
@@ -352,7 +411,7 @@ export default function PlayPage() {
                 </p>
               )}
               {bet && !bet.pending && !bet.error && (
-                <p className="text-center font-ui-label text-[10px] text-emerald-300">
+                <p className="text-center font-ui-label text-[10px] text-[color:var(--green)]">
                   Bet locked ✓{" "}
                   {bet.explorerUrl && (
                     <a
@@ -377,9 +436,11 @@ export default function PlayPage() {
                 source={reveal.source}
                 userPick={bet?.pick ?? null}
                 userAmount={bet?.amount ?? 0}
+                tell={tell}
+                nextInSeconds={nextIn}
               />
               {settleReceipt?.won && settleReceipt.explorerUrl && (
-                <p className="text-center font-ui-label text-[10px] text-emerald-300">
+                <p className="text-center font-ui-label text-[10px] text-[color:var(--green)]">
                   Payout sent ·{" "}
                   <a
                     href={settleReceipt.explorerUrl}
@@ -391,16 +452,13 @@ export default function PlayPage() {
                   </a>
                 </p>
               )}
+              <button
+                onClick={playAgainNow}
+                className="play-cta self-center rounded-xl px-8 py-4 font-display text-2xl tracking-tight"
+              >
+                PLAY AGAIN
+              </button>
             </>
-          )}
-
-          {phase === "revealed" && (
-            <button
-              onClick={startRound}
-              className="self-center rounded-md border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-6 py-3 font-ui-label text-sm text-[color:var(--accent)] hover:bg-[color:var(--accent)]/20"
-            >
-              Next round
-            </button>
           )}
         </>
       )}

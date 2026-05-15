@@ -141,6 +141,47 @@ function extractText(res: any): string {
     .trim()
 }
 
+// One-sentence "tell" Claude writes after the reveal — what gave the liar away,
+// or why the truth-teller felt convincing. This is the retention hook.
+export async function generateTell(
+  topic: string,
+  truthClaim: string,
+  liarClaim: string,
+  liarSide: "A" | "B",
+): Promise<string> {
+  const c = client()
+  if (!c) return fallbackTell(liarSide)
+  try {
+    const res = await c.messages.create({
+      model: MODEL,
+      max_tokens: 160,
+      messages: [
+        {
+          role: "user",
+          content: [
+            `Topic under debate: "${topic}".`,
+            `AGENT ${liarSide} was lying.`,
+            `Truthful claim (from the truth-teller): "${truthClaim}"`,
+            `False claim (from the liar): "${liarClaim}"`,
+            ``,
+            `In ONE sentence (max 22 words), explain the tell that gave the liar away.`,
+            `Be concrete: vague numbers, dodged specifics, suspicious round figures, hedging language, etc.`,
+            `Start with the tell, no preamble. Do not name the agent letter.`,
+          ].join("\n"),
+        },
+      ],
+    })
+    const text = extractText(res)
+    return text || fallbackTell(liarSide)
+  } catch {
+    return fallbackTell(liarSide)
+  }
+}
+
+function fallbackTell(_liarSide: "A" | "B"): string {
+  return "The liar leaned on round numbers and avoided specifics — confident speakers usually cite the exact figure."
+}
+
 function fallbackClaim(topic: string, truth: string, isTruth: boolean): string {
   if (isTruth) {
     return `Look at the data on "${topic}". ${truth} The numbers are what they are — argue with the source, not me.`

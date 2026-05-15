@@ -3,27 +3,36 @@
 @tailwind utilities;
 
 :root {
-  /* Fight Night palette */
-  --bg: #050508;
-  --bg-deep: #03030a;
-  --bg-soft: #0a0a14;
-  --bg-card: #0d0d18;
-  --bg-card-2: #11111e;
-  --border: #1a1a2a;
-  --border-soft: #232336;
-  --text: #f4f4f5;
-  --text-mute: #a0a0b0;
+  /* BLUFF — poker × cyberpunk palette */
+  --bg: #0a0612;
+  --bg-deep: #060410;
+  --bg-soft: #0e0a1c;
+  --surface: #14102a;
+  --surface-2: #1f1640;
+  --bg-card: #14102a;
+  --bg-card-2: #1f1640;
+  --border: #2a2050;
+  --border-soft: #3a2d6a;
+  --text: #f0e8ff;
+  --text-mute: #6b5e8e;
 
-  --bull: #f7b731;
-  --bull-soft: rgba(247, 183, 49, 0.12);
-  --bull-glow: rgba(247, 183, 49, 0.5);
-  --bear: #ff3b3b;
-  --bear-soft: rgba(255, 59, 59, 0.12);
-  --bear-glow: rgba(255, 59, 59, 0.5);
+  --amber: #ffb800;
+  --magenta: #ff2da7;
+  --cyan: #00e8ff;
+  --green: #00ff88;
 
-  /* Primary CTA = gold */
-  --accent: #f7b731;
-  --accent-soft: rgba(247, 183, 49, 0.14);
+  /* Map legacy bull/bear onto amber/magenta so existing components still
+     paint with the new palette without code changes. */
+  --bull: var(--amber);
+  --bull-soft: rgba(255, 184, 0, 0.12);
+  --bull-glow: rgba(255, 184, 0, 0.55);
+  --bear: var(--magenta);
+  --bear-soft: rgba(255, 45, 167, 0.12);
+  --bear-glow: rgba(255, 45, 167, 0.55);
+
+  /* Primary CTA = amber */
+  --accent: var(--amber);
+  --accent-soft: rgba(255, 184, 0, 0.14);
 
   /* Fonts wired through next/font in layout.tsx */
   --font-display:
@@ -46,13 +55,23 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(60, 25, 95, 0.22) 0%,
-    rgba(15, 8, 26, 0.7) 38%,
-    var(--bg-deep) 80%,
-    var(--bg) 100%
-  );
+  background:
+    radial-gradient(
+      ellipse at 15% 10%,
+      rgba(255, 45, 167, 0.18) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 85% 90%,
+      rgba(0, 232, 255, 0.14) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at center,
+      rgba(31, 22, 64, 0.6) 0%,
+      var(--bg-deep) 70%,
+      var(--bg) 100%
+    );
   z-index: 0;
 }
 
@@ -299,6 +318,125 @@ body > * {
 }
 .cta-glow:hover:not(:disabled) {
   animation: cta-glow 1.6s ease-out infinite;
+}
+
+/* ---------- BLUFF — poker × cyberpunk additions ---------- */
+
+/* Tarot/playing-card frame */
+.bluff-card {
+  position: relative;
+  border-radius: 24px;
+  background: linear-gradient(160deg, var(--surface-2) 0%, var(--surface) 100%);
+  padding: 1.5px;
+  isolation: isolate;
+}
+.bluff-card-inner {
+  border-radius: 22px;
+  background: linear-gradient(160deg, var(--surface) 0%, var(--bg-soft) 100%);
+  padding: 20px;
+}
+.bluff-card-a {
+  background: linear-gradient(160deg, var(--amber) 0%, rgba(255, 184, 0, 0.25) 55%, transparent 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 184, 0, 0.25),
+    0 20px 70px -30px rgba(255, 184, 0, 0.55);
+}
+.bluff-card-b {
+  background: linear-gradient(200deg, var(--magenta) 0%, rgba(255, 45, 167, 0.25) 55%, transparent 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 45, 167, 0.25),
+    0 20px 70px -30px rgba(255, 45, 167, 0.55);
+}
+.bluff-card-speaking-a {
+  box-shadow:
+    0 0 0 1px rgba(255, 184, 0, 0.55),
+    0 0 40px 0 rgba(255, 184, 0, 0.55),
+    0 20px 70px -30px rgba(255, 184, 0, 0.7);
+}
+.bluff-card-speaking-b {
+  box-shadow:
+    0 0 0 1px rgba(255, 45, 167, 0.55),
+    0 0 40px 0 rgba(255, 45, 167, 0.55),
+    0 20px 70px -30px rgba(255, 45, 167, 0.7);
+}
+
+/* Card flip (3D) */
+.flip-3d {
+  perspective: 1200px;
+}
+.flip-inner {
+  transition: transform 700ms cubic-bezier(0.65, 0, 0.35, 1);
+  transform-style: preserve-3d;
+  position: relative;
+}
+.flip-inner.flipped { transform: rotateY(180deg); }
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+/* "Deal" entrance (card sliding/scaling in) */
+@keyframes deal-in {
+  0%   { opacity: 0; transform: translateY(40px) rotate(-3deg) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+}
+.deal-in { animation: deal-in 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+
+/* Marquee for winners ticker */
+@keyframes bluff-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.bluff-marquee-track {
+  animation: bluff-marquee 38s linear infinite;
+  will-change: transform;
+  white-space: nowrap;
+}
+
+/* CTA: huge glowing PLAY NOW button */
+@keyframes play-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 184, 0, 0.55),
+      0 0 40px 4px rgba(255, 45, 167, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 18px rgba(255, 184, 0, 0),
+      0 0 60px 10px rgba(255, 45, 167, 0.55);
+  }
+}
+.play-cta {
+  background: linear-gradient(135deg, var(--amber) 0%, var(--magenta) 100%);
+  color: #0a0612;
+  animation: play-glow 2.4s ease-in-out infinite;
+}
+
+/* Confetti bits — tiny absolutely-positioned spans */
+@keyframes confetti-fall {
+  0%   { transform: translateY(-20vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0.6; }
+}
+.confetti-bit {
+  position: absolute;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confetti-fall 2400ms ease-in forwards;
+  will-change: transform;
+}
+
+/* Cyan reveal label glow */
+.text-cyan-glow {
+  color: var(--cyan);
+  text-shadow:
+    0 0 8px rgba(0, 232, 255, 0.6),
+    0 0 22px rgba(0, 232, 255, 0.35);
 }
 
 /* Dashed bet-slip border (gives the Vegas-stub feel) */

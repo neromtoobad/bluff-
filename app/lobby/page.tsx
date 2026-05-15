@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import StreakBadge from "@/components/bluff/StreakBadge"
+import StatsCard from "@/components/bluff/StatsCard"
+import Leaderboard from "@/components/bluff/Leaderboard"
+import WinnersTicker from "@/components/bluff/WinnersTicker"
 
 type DailyStatus = { claimed: boolean; amount: string }
 type ClaimResult = {
@@ -16,7 +18,6 @@ type ClaimResult = {
 export default function LobbyPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [status, setStatus] = useState<DailyStatus | null>(null)
-  const [streak, setStreak] = useState<number>(0)
   const [claiming, setClaiming] = useState(false)
   const [result, setResult] = useState<ClaimResult | null>(null)
 
@@ -28,10 +29,6 @@ export default function LobbyPage() {
       fetch(`/api/daily/status?walletAddress=${addr}`)
         .then((r) => r.json())
         .then(setStatus)
-        .catch(() => {})
-      fetch(`/api/streak?walletAddress=${addr}`)
-        .then((r) => r.json())
-        .then((j) => setStreak(j.streak ?? 0))
         .catch(() => {})
     } catch {}
   }, [])
@@ -56,81 +53,100 @@ export default function LobbyPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-10 bg-[color:var(--bg)]">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 pb-24 pt-10">
       <header className="flex items-center justify-between">
-        <h1 className="font-display text-4xl tracking-tight">Lobby</h1>
-        <div className="flex items-center gap-3">
-          <StreakBadge streak={streak} />
-          <Link
-            href="/play"
-            className="rounded-md border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-3 py-1.5 font-ui-label text-[11px] text-[color:var(--accent)] hover:bg-[color:var(--accent)]/20"
-          >
-            Play
-          </Link>
-        </div>
+        <h1 className="font-display text-5xl tracking-tight">
+          <span className="text-[color:var(--amber)]">B</span>
+          <span className="text-[color:var(--magenta)]">L</span>
+          <span className="text-[color:var(--cyan)]">U</span>
+          <span className="text-[color:var(--green)]">F</span>
+          <span className="text-[color:var(--amber)]">F</span>
+        </h1>
+        <Link
+          href="/"
+          className="font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
+        >
+          ← Home
+        </Link>
       </header>
 
-      <section className="rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--bg-card)] p-6">
-        <p className="font-ui-label text-[10px] uppercase tracking-wider text-[color:var(--text-mute)]">
-          Daily bonus
-        </p>
-        <p className="mt-2 font-display text-3xl">
-          $0.10 USDC · once per UTC day
-        </p>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-6">
+          <StatsCard walletAddress={walletAddress} />
 
-        {!walletAddress ? (
-          <p className="mt-4 font-ui-label text-xs text-amber-300/80">
-            Sign in or connect a wallet to claim.{" "}
-            <Link href="/" className="underline">
-              Go home
-            </Link>
-          </p>
-        ) : status?.claimed ? (
-          <button
-            disabled
-            className="mt-4 w-full cursor-not-allowed rounded-md border border-[color:var(--border-soft)] bg-black/40 px-6 py-4 font-ui-label text-sm text-[color:var(--text-mute)]"
+          {/* Daily bonus */}
+          <div className="bluff-card bluff-card-a">
+            <div className="bluff-card-inner">
+              <div className="flex items-center justify-between">
+                <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--cyan)]">
+                  ◆ DAILY BONUS
+                </p>
+                <p className="font-ui-label text-[10px] text-[color:var(--text-mute)]">
+                  resets at UTC midnight
+                </p>
+              </div>
+              {!walletAddress ? (
+                <p className="mt-3 font-ui-label text-xs text-[color:var(--amber)]/80">
+                  Sign in to claim your $0.10.{" "}
+                  <Link href="/" className="underline">
+                    Go home
+                  </Link>
+                </p>
+              ) : status?.claimed ? (
+                <button
+                  disabled
+                  className="mt-3 w-full cursor-not-allowed rounded-md border border-[color:var(--border)] bg-black/40 px-6 py-3 font-ui-label text-sm text-[color:var(--text-mute)]"
+                >
+                  Come back tomorrow
+                </button>
+              ) : (
+                <button
+                  onClick={claim}
+                  disabled={claiming || status == null}
+                  className="mt-3 w-full rounded-md border border-[color:var(--green)]/50 bg-[color:var(--green)]/15 px-6 py-3 font-display text-xl tracking-tight text-[color:var(--green)] hover:bg-[color:var(--green)]/25 disabled:opacity-50"
+                >
+                  {claiming ? "Sending…" : "CLAIM $0.10 DAILY BONUS"}
+                </button>
+              )}
+              {result?.ok && result.explorerUrl && (
+                <p className="mt-2 font-ui-label text-[10px] text-[color:var(--green)]">
+                  Paid ${result.amount} ·{" "}
+                  <a
+                    href={result.explorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    view on Arc explorer
+                  </a>
+                </p>
+              )}
+              {result?.error && (
+                <p className="mt-2 font-ui-label text-[10px] text-rose-300">
+                  {result.error}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Huge PLAY NOW */}
+          <Link
+            href="/play?auto=1"
+            className="play-cta block w-full rounded-2xl px-10 py-10 text-center font-display text-6xl tracking-tight transition hover:scale-[1.01]"
           >
-            Come back tomorrow
-          </button>
-        ) : (
-          <button
-            onClick={claim}
-            disabled={claiming || status == null}
-            className="mt-4 w-full rounded-md border border-emerald-400/50 bg-emerald-400/15 px-6 py-4 font-display text-xl tracking-tight text-emerald-200 hover:bg-emerald-400/25 disabled:opacity-50"
-          >
-            {claiming ? "Sending…" : "CLAIM $0.10 DAILY BONUS"}
-          </button>
-        )}
-
-        {result?.ok && result.explorerUrl && (
-          <p className="mt-3 font-ui-label text-[10px] text-emerald-300">
-            Paid ${result.amount} ·{" "}
-            <a
-              href={result.explorerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-            >
-              view on Arc explorer
-            </a>
+            PLAY NOW
+          </Link>
+          <p className="text-center font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
+            Spot the bluff · Win up to 5× · One minute per round
           </p>
-        )}
-        {result?.error && (
-          <p className="mt-3 font-ui-label text-[10px] text-rose-300">{result.error}</p>
-        )}
-      </section>
+        </div>
 
-      <section className="rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--bg-card)] p-6">
-        <p className="font-ui-label text-[10px] uppercase tracking-wider text-[color:var(--text-mute)]">
-          Multipliers
-        </p>
-        <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm md:grid-cols-4">
-          <li className="rounded border border-[color:var(--border-soft)] p-2">0–2 → 1.9×</li>
-          <li className="rounded border border-amber-400/40 p-2 text-amber-300">3–4 → 2.5×</li>
-          <li className="rounded border border-orange-500/50 p-2 text-orange-300">5–9 → 3×</li>
-          <li className="rounded border border-rose-500/60 p-2 text-rose-300">10+ → 5×</li>
-        </ul>
-      </section>
+        <aside>
+          <Leaderboard />
+        </aside>
+      </div>
+
+      <WinnersTicker />
     </main>
   )
 }

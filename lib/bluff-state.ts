@@ -34,6 +34,7 @@ export type Round = {
   bets: Bet[]
   settledAt?: number
   receipts?: SettleReceipt[]
+  tell?: string
 }
 
 // Module-level singleton so dev HMR / multiple route invocations share state.

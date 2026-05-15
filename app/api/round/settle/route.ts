@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { getRound, type SettleReceipt } from "@/lib/bluff-state"
 import { applyResult, multiplierFor } from "@/lib/streaks"
+import { recordRound } from "@/lib/stats"
+import { pushEvent } from "@/lib/feed"
+import { generateTell } from "@/lib/bluff-claude"
 import { getKit } from "@/lib/arc"
 
 export const runtime = "nodejs"
@@ -28,7 +31,12 @@ export async function POST(req: Request) {
   }
 
   if (round.settledAt && round.receipts) {
-    return NextResponse.json({ ok: true, receipts: round.receipts, alreadySettled: true })
+    return NextResponse.json({
+      ok: true,
+      receipts: round.receipts,
+      tell: round.tell,
+      alreadySettled: true,
+    })
   }
 
   const receipts: SettleReceipt[] = []
@@ -38,6 +46,7 @@ export async function POST(req: Request) {
     const streakAfter = applyResult(bet.walletAddress, won)
 
     if (!won) {
+      recordRound(bet.walletAddress, false, 0)
       receipts.push({
         walletAddress: bet.walletAddress,
         won: false,
@@ -75,6 +84,14 @@ export async function POST(req: Request) {
       continue
     }
 
+    recordRound(bet.walletAddress, true, Number(payout))
+    pushEvent({
+      walletAddress: bet.walletAddress,
+      amountUSDC: Number(payout),
+      streak: streakAfter,
+      multiplier: mult,
+    })
+
     receipts.push({
       walletAddress: bet.walletAddress,
       won: true,
@@ -88,6 +105,14 @@ export async function POST(req: Request) {
 
   round.settledAt = Date.now()
   round.receipts = receipts
+  try {
+    round.tell = await generateTell(
+      round.topic,
+      round.liar === "A" ? round.claimB : round.claimA,
+      round.liar === "A" ? round.claimA : round.claimB,
+      round.liar,
+    )
+  } catch {}
 
-  return NextResponse.json({ ok: true, receipts })
+  return NextResponse.json({ ok: true, receipts, tell: round.tell })
 }
