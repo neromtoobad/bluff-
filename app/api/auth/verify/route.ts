@@ -66,16 +66,15 @@ export async function POST(req: Request) {
       )
     }
 
-    const listRes = await fetch(
-      `${CIRCLE_API_BASE}/wallets?userId=${encodeURIComponent(userId)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "X-User-Token": session.userToken,
-        },
+    // User-controlled `/wallets` infers the user from X-User-Token and rejects
+    // any `userId` query param ("API parameter invalid" → 400).
+    const listRes = await fetch(`${CIRCLE_API_BASE}/wallets`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "X-User-Token": session.userToken,
       },
-    )
+    })
     if (!listRes.ok) {
       const detail = await listRes.text()
       console.error(
