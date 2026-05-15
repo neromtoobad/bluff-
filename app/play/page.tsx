@@ -35,8 +35,6 @@ type SettleReceipt = {
   explorerUrl?: string
 }
 
-const NEXT_ROUND_DELAY_SEC = 10
-
 export default function PlayPage() {
   const [autoStart, setAutoStart] = useState(false)
   const [phase, setPhase] = useState<Phase>("idle")
@@ -57,7 +55,6 @@ export default function PlayPage() {
     | null
   >(null)
   const [confetti, setConfetti] = useState(false)
-  const [nextIn, setNextIn] = useState<number | null>(null)
   const [topicUrl, setTopicUrl] = useState<string | null>(null)
   const roundIdRef = useRef<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
@@ -152,6 +149,12 @@ export default function PlayPage() {
   )
 
   const startRound = useCallback(async () => {
+    // Tear down any in-flight stream before starting a new one.
+    // React strict-mode + auto-start can race; this prevents the
+    // duplicate-token bug where two streams write to the same claim.
+    esRef.current?.close()
+    esRef.current = null
+
     setPhase("loading")
     setClaimA("")
     setClaimB("")
@@ -161,7 +164,6 @@ export default function PlayPage() {
     setSpeaking(null)
     setTell(null)
     setConfetti(false)
-    setNextIn(null)
 
     try { audio.roundBell() } catch {}
     try { audio.startCrowdAmbience(0.04) } catch {}
@@ -219,23 +221,7 @@ export default function PlayPage() {
     }
   }, [autoStart, phase, startRound])
 
-  // Continuous play: 10-second countdown after reveal → next round.
-  useEffect(() => {
-    if (phase !== "revealed") return
-    setNextIn(NEXT_ROUND_DELAY_SEC)
-    const t = setInterval(() => {
-      setNextIn((n) => {
-        if (n == null) return n
-        if (n <= 1) {
-          clearInterval(t)
-          startRound()
-          return null
-        }
-        return n - 1
-      })
-    }, 1000)
-    return () => clearInterval(t)
-  }, [phase, startRound])
+  // No more auto-restart — the user chooses Play Again or Leave on Reveal.
 
   const placeBet = async (pick: Pick, amount: number) => {
     if (phase !== "betting") return
@@ -352,7 +338,6 @@ export default function PlayPage() {
   }
 
   const playAgainNow = () => {
-    setNextIn(null)
     startRound()
   }
 
@@ -377,9 +362,14 @@ export default function PlayPage() {
         </Link>
         <div className="flex items-center gap-3">
           <StreakBadge streak={streak} />
-          {(phase === "streaming" || phase === "betting") && (
+          {(phase === "streaming" || (phase === "betting" && !bet)) && (
             <span className="rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-display text-lg text-[color:var(--gold-1)]">
               {secondsLeft}s
+            </span>
+          )}
+          {phase === "betting" && bet && !bet.pending && !bet.error && (
+            <span className="rounded-full border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--lime)]">
+              REVEALING…
             </span>
           )}
         </div>
@@ -499,8 +489,12 @@ export default function PlayPage() {
                 userPick={bet?.pick ?? null}
                 userAmount={bet?.amount ?? 0}
                 tell={tell}
-                nextInSeconds={nextIn}
                 onNext={playAgainNow}
+                onLeave={() => {
+                  esRef.current?.close()
+                  esRef.current = null
+                  window.location.href = "/lobby"
+                }}
               />
               {settleReceipt?.won && settleReceipt.explorerUrl && (
                 <p className="text-center font-ui-label text-[10px] text-[color:var(--green)]">

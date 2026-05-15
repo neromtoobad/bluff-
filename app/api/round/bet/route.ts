@@ -81,6 +81,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error ?? "bet rejected" }, { status: 409 })
   }
 
+  // Single-player demo flow: once the bet is in, there's no reason to keep
+  // the betting window open. Collapse the deadline so the SSE wait wakes
+  // up immediately and the reveal fires.
+  r.bettingDeadline = Date.now()
+  r.revealAt = r.bettingDeadline
+
   return NextResponse.json({
     ok: true,
     bet: {

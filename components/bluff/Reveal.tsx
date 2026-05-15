@@ -8,8 +8,8 @@ type Props = {
   userPick: "A" | "B" | null
   userAmount: number
   tell?: string | null
-  nextInSeconds?: number | null
   onNext?: () => void
+  onLeave?: () => void
 }
 
 const PAYOUT_MULT = 1.9
@@ -22,8 +22,8 @@ export default function Reveal({
   userPick,
   userAmount,
   tell,
-  nextInSeconds,
   onNext,
+  onLeave,
 }: Props) {
   const truthAgent: "A" | "B" = liar === "A" ? "B" : "A"
   const won = userPick != null && userPick === truthAgent
@@ -97,7 +97,7 @@ export default function Reveal({
         </div>
       )}
 
-      <div className="mt-5 flex items-center justify-between gap-4">
+      <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="font-ui-label text-[12px] tracking-wider">
           {noBet ? (
             <span className="text-[color:var(--text-mute)]">No bet this round</span>
@@ -111,13 +111,20 @@ export default function Reveal({
             </span>
           )}
         </div>
-        <button
-          onClick={onNext}
-          className="lime-cta rounded-2xl px-8 py-3 font-display text-2xl tracking-tight"
-        >
-          NEXT ROUND
-          {nextInSeconds != null && nextInSeconds > 0 ? ` (${nextInSeconds})` : ""}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={onLeave}
+            className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-black/30 px-6 py-3 font-display text-xl tracking-tight text-[color:var(--text)] hover:bg-black/45"
+          >
+            LEAVE
+          </button>
+          <button
+            onClick={onNext}
+            className="lime-cta rounded-2xl px-8 py-3 font-display text-2xl tracking-tight"
+          >
+            PLAY AGAIN
+          </button>
+        </div>
       </div>
     </div>
   )

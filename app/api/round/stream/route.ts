@@ -48,8 +48,12 @@ export async function GET(req: NextRequest) {
 
       send("betting_open", { deadline: round.bettingDeadline })
 
-      const wait = round.bettingDeadline - Date.now()
-      if (wait > 0) await sleep(wait)
+      // Poll the deadline so /api/round/bet can collapse it after the user
+      // places their bet — otherwise we'd be stuck in a long sleep that
+      // captured the original deadline.
+      while (Date.now() < round.bettingDeadline) {
+        await sleep(250)
+      }
 
       send("reveal", {
         liar: round.liar,
