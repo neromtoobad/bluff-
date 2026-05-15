@@ -1,72 +1,54 @@
 import Link from "next/link"
 import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
-import ConnectButton from "@/components/bluff/ConnectButton"
+import TopNav from "@/components/bluff/TopNav"
 
 export default function HomePage() {
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-10">
+    <main className="relative flex min-h-screen flex-col">
       <div className="rays-bg" />
       <div className="forest-ridge" />
+      <TopNav />
 
-      {/* Top nav */}
-      <nav className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-4">
-        <span className="font-display text-2xl tracking-widest text-[color:var(--gold-1)]">
-          BL<span className="text-[color:var(--lime)]">◯</span>FF
-        </span>
-        <div className="hidden gap-6 md:flex">
-          <Link href="/lobby" className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
-            Lobby
-          </Link>
-          <Link href="/lobby" className="font-ui-label text-[11px] tracking-widest text-[color:var(--text-mute)] hover:text-white">
-            Stats
-          </Link>
-          <Link href="/lobby" className="font-ui-label text-[11px] tracking-widest text-[color:var(--text-mute)] hover:text-white">
-            Leaderboard
-          </Link>
-        </div>
-        <ConnectButton />
-      </nav>
-
-      <header className="relative z-10 text-center">
+      <section className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-32 text-center">
         <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
-          ◆ ON-CHAIN · LIVE · ONE MINUTE PER ROUND
+          ◆ ONE MINUTE · TWO AGENTS · ONE LIAR
         </p>
-        <div className="relative mt-2">
+        <div className="relative">
           <p
-            className="ghost-jackpot pointer-events-none absolute inset-x-0 -top-8 font-display"
-            style={{ fontSize: "clamp(96px, 14vw, 220px)" }}
+            className="ghost-jackpot pointer-events-none absolute inset-x-0 -top-16 font-display"
+            style={{ fontSize: "clamp(112px, 16vw, 260px)" }}
           >
             5.0×
           </p>
           <h1
             className="jackpot-title relative font-display leading-[0.92]"
-            style={{ fontSize: "clamp(96px, 16vw, 220px)" }}
+            style={{ fontSize: "clamp(120px, 22vw, 320px)" }}
           >
             BLUFF
           </h1>
         </div>
-        <p className="mt-4 font-ui-label text-[12px] tracking-widest text-[color:var(--gold-1)]">
-          SPOT THE BLUFF · WIN UP TO 5×
+        <p className="mt-2 max-w-xl font-display text-3xl text-white/85">
+          Spot the AI lie. Win up to 5× your bet.
         </p>
-        <p className="mt-1 font-display text-2xl text-white/85">
-          Two AI agents. One claim. One liar.
+        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)]">
+          Real USDC. On-chain on Arc Testnet. No emails.
         </p>
-      </header>
 
-      <div className="relative z-10 flex flex-col items-center gap-3">
-        <Link
-          href="/lobby"
-          className="lime-cta rounded-2xl px-14 py-5 font-display text-3xl tracking-wide"
-        >
-          ENTER LOBBY
-        </Link>
-        <Link
-          href="/play?auto=1"
-          className="font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)] hover:underline"
-        >
-          or play instantly →
-        </Link>
-      </div>
+        <div className="flex flex-col items-center gap-3">
+          <Link
+            href="/play?auto=1"
+            className="lime-cta rounded-2xl px-14 py-5 font-display text-4xl tracking-wide"
+          >
+            DEAL ME IN
+          </Link>
+          <Link
+            href="/rules"
+            className="font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)] hover:underline"
+          >
+            new here? read the rules →
+          </Link>
+        </div>
+      </section>
 
       <ChestMascot />
       <OracleMascot />

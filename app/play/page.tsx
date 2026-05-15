@@ -9,7 +9,7 @@ import StreakBadge from "@/components/bluff/StreakBadge"
 import FullscreenFlash from "@/components/bluff/FullscreenFlash"
 import Confetti from "@/components/bluff/Confetti"
 import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
-import Link from "next/link"
+import TopNav from "@/components/bluff/TopNav"
 import * as audio from "@/lib/audio"
 
 type Phase = "idle" | "loading" | "streaming" | "betting" | "revealed"
@@ -345,7 +345,7 @@ export default function PlayPage() {
   const secondsLeft = Math.max(0, Math.ceil((deadline - now) / 1000))
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 pb-24 pt-6">
+    <main className="relative flex min-h-screen flex-col gap-6 pb-24 pt-0">
       <div className="rays-bg" />
       <div className="forest-ridge" />
       <FullscreenFlash
@@ -357,24 +357,23 @@ export default function PlayPage() {
       />
       <Confetti show={confetti} />
 
-      <header className="relative z-10 flex items-center justify-between">
-        <Link href="/lobby" className="font-display text-2xl tracking-widest text-[color:var(--gold-1)]">
-          BL<span className="text-[color:var(--lime)]">◯</span>FF
-        </Link>
-        <div className="flex items-center gap-3">
-          <StreakBadge streak={streak} />
-          {(phase === "streaming" || (phase === "betting" && !bet)) && (
-            <span className="rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-display text-lg text-[color:var(--gold-1)]">
-              {secondsLeft}s
-            </span>
-          )}
-          {phase === "betting" && bet && !bet.pending && !bet.error && (
-            <span className="rounded-full border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--lime)]">
-              REVEALING…
-            </span>
-          )}
-        </div>
-      </header>
+      <TopNav compact />
+
+      <div className="relative z-10 flex items-center justify-end gap-3 px-6 pb-2">
+        <StreakBadge streak={streak} />
+        {(phase === "streaming" || (phase === "betting" && !bet)) && (
+          <span className="rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-display text-lg text-[color:var(--gold-1)]">
+            {secondsLeft}s
+          </span>
+        )}
+        {phase === "betting" && bet && !bet.pending && !bet.error && (
+          <span className="rounded-full border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--lime)]">
+            REVEALING…
+          </span>
+        )}
+      </div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6">
 
       {phase === "idle" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -523,6 +522,8 @@ export default function PlayPage() {
           )}
         </>
       )}
+
+      </div>
 
       <ChestMascot />
       <OracleMascot />

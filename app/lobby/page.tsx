@@ -4,9 +4,10 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import StatsCard from "@/components/bluff/StatsCard"
 import Leaderboard from "@/components/bluff/Leaderboard"
+import LiveActivity from "@/components/bluff/LiveActivity"
 import WinnersTicker from "@/components/bluff/WinnersTicker"
 import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
-import ConnectButton from "@/components/bluff/ConnectButton"
+import TopNav from "@/components/bluff/TopNav"
 
 type DailyStatus = { claimed: boolean; amount: string }
 type ClaimResult = {
@@ -55,42 +56,27 @@ export default function LobbyPage() {
   }
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 pb-32 pt-10">
+    <main className="relative min-h-screen pb-32">
       <div className="rays-bg" />
       <div className="forest-ridge" />
+      <TopNav compact />
 
-      <header className="relative z-10 flex items-center justify-between">
-        <Link href="/" className="font-display text-2xl tracking-widest text-[color:var(--gold-1)]">
-          BL<span className="text-[color:var(--lime)]">◯</span>FF
-        </Link>
-        <nav className="hidden gap-6 md:flex">
-          <span className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
-            ◆ Lobby
-          </span>
-          <Link href="/play?auto=1" className="font-ui-label text-[11px] tracking-widest text-[color:var(--text-mute)] hover:text-white">
-            Play
-          </Link>
-        </nav>
-        <ConnectButton />
-      </header>
-
-      <div className="relative z-10 text-center">
+      <section className="relative z-10 mx-auto max-w-6xl px-6 pt-2 text-center">
         <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
           ◆ JACKPOT TONIGHT
         </p>
-        <h1 className="jackpot-title font-display text-7xl leading-tight md:text-8xl">
+        <h1 className="jackpot-title font-display text-7xl leading-tight md:text-9xl">
           $5.00 × MULTI
         </h1>
         <p className="mt-1 font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)]">
           Hit a 10-streak to unlock max payout
         </p>
-      </div>
+      </section>
 
-      <div className="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
+      <section className="relative z-10 mx-auto mt-6 grid max-w-6xl grid-cols-1 gap-6 px-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-5">
           <StatsCard walletAddress={walletAddress} />
 
-          {/* Daily bonus */}
           <div className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-5 backdrop-blur">
             <div className="flex items-center justify-between">
               <p className="font-display text-lg tracking-widest text-[color:var(--gold-1)]">
@@ -102,10 +88,7 @@ export default function LobbyPage() {
             </div>
             {!walletAddress ? (
               <p className="mt-3 font-ui-label text-xs text-[color:var(--gold-1)]/80">
-                Sign in to claim your $0.10.{" "}
-                <Link href="/" className="underline">
-                  Go home
-                </Link>
+                Connect a wallet to claim your $0.10.
               </p>
             ) : status?.claimed ? (
               <button
@@ -136,7 +119,6 @@ export default function LobbyPage() {
             )}
           </div>
 
-          {/* PLAY NOW chunky lime CTA */}
           <Link
             href="/play?auto=1"
             className="lime-cta block w-full rounded-2xl px-10 py-8 text-center font-display text-5xl tracking-wide"
@@ -146,12 +128,14 @@ export default function LobbyPage() {
           <p className="text-center font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
             One round · 60 seconds · 1% fee on payouts
           </p>
+
+          <Leaderboard />
         </div>
 
-        <aside>
-          <Leaderboard />
+        <aside className="space-y-5">
+          <LiveActivity />
         </aside>
-      </div>
+      </section>
 
       <ChestMascot />
       <OracleMascot />
