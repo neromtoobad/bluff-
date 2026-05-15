@@ -19,7 +19,13 @@ function client(): Anthropic {
   return new Anthropic({ apiKey: key })
 }
 
-export type TruthResult = { truth: string; source: string }
+// "true" — the claim matches reality. The truth-teller says "Yes, it's the truth."
+// "false" — the claim is wrong. The truth-teller says "No, it's a lie."
+// "unclear" — we couldn't determine; caller picks a random stance so the
+// two agents are still on opposite sides.
+export type Verdict = "true" | "false" | "unclear"
+
+export type TruthResult = { truth: string; source: string; verdict: Verdict }
 
 export async function fetchTruth(topic: string): Promise<TruthResult> {
   let c: Anthropic
@@ -30,6 +36,7 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
     return {
       truth: `The claim "${topic}" cannot be independently verified in this build (no ANTHROPIC_API_KEY set).`,
       source: "local-fallback",
+      verdict: "unclear",
     }
   }
 
@@ -44,9 +51,15 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
           role: "user",
           content: [
             `What is the verifiable truth about this claim: "${topic}"?`,
-            `Search the web. Reply in this exact format on two lines:`,
-            `TRUTH: <one or two sentences stating whether the claim is true, false, or partially true, with the actual figure or fact>`,
+            `Search the web. Reply in this EXACT format on three lines:`,
+            `VERDICT: <one of: TRUE / FALSE / UNCLEAR>`,
+            `TRUTH: <one or two sentences with the actual figure or fact>`,
             `SOURCE: <a single URL>`,
+            ``,
+            `VERDICT rules:`,
+            `- TRUE: the claim as stated matches reality.`,
+            `- FALSE: the claim contradicts reality (wrong figure, wrong direction, wrong period).`,
+            `- UNCLEAR: data is genuinely ambiguous or you couldn't verify.`,
           ].join("\n"),
         },
       ],
@@ -65,6 +78,7 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
     return {
       truth: `The claim "${topic}" could not be verified due to an API error.`,
       source: "error-fallback",
+      verdict: "unclear",
     }
   }
 }
@@ -72,16 +86,35 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
 function parseTruth(text: string): TruthResult {
   const tm = text.match(/TRUTH:\s*(.+?)(?:\n|$)/i)
   const sm = text.match(/SOURCE:\s*(\S+)/i)
+  const vm = text.match(/VERDICT:\s*(TRUE|FALSE|UNCLEAR|PARTIAL)/i)
+  const raw = (vm?.[1] ?? "").toUpperCase()
+  const verdict: Verdict =
+    raw === "TRUE" ? "true" : raw === "FALSE" ? "false" : "unclear"
   return {
     truth: tm?.[1]?.trim() || text.trim().slice(0, 280),
     source: sm?.[1]?.trim() || "unknown",
+    verdict,
   }
+}
+
+export function truthOpener(verdict: Verdict): "Yes, it's the truth." | "No, it's a lie." {
+  // For "unclear", default the truth-teller to "Yes" — the liar will be forced
+  // to take the opposite. /api/round/start can override.
+  return verdict === "false" ? "No, it's a lie." : "Yes, it's the truth."
+}
+
+export function liarOpener(verdict: Verdict): "Yes, it's the truth." | "No, it's a lie." {
+  // The liar always takes the OPPOSITE of the truth-teller's stance.
+  return truthOpener(verdict) === "Yes, it's the truth."
+    ? "No, it's a lie."
+    : "Yes, it's the truth."
 }
 
 export async function generateTruthClaim(
   topic: string,
   truth: string,
   source = "",
+  opener: string = "Yes, it's the truth.",
 ): Promise<string> {
   let c: Anthropic
   try {
@@ -97,7 +130,7 @@ export async function generateTruthClaim(
       max_tokens: 300,
       ...SAMPLING,
       messages: [
-        { role: "user", content: truthPrompt(topic, truth, source) },
+        { role: "user", content: truthPrompt(topic, truth, source, opener) },
       ],
     })
     const text = extractText(res)
@@ -119,6 +152,7 @@ export async function generateTruthClaim(
 export async function generateLiarClaim(
   topic: string,
   truth: string,
+  opener: string = "No, it's a lie.",
 ): Promise<string> {
   let c: Anthropic
   try {
@@ -134,7 +168,7 @@ export async function generateLiarClaim(
       max_tokens: 300,
       ...SAMPLING,
       messages: [
-        { role: "user", content: liarPrompt(topic, truth) },
+        { role: "user", content: liarPrompt(topic, truth, opener) },
       ],
     })
     const text = extractText(res)
@@ -155,7 +189,12 @@ export async function generateLiarClaim(
 
 // --- Prompts --------------------------------------------------------------
 
-function truthPrompt(topic: string, truth: string, source: string): string {
+function truthPrompt(
+  topic: string,
+  truth: string,
+  source: string,
+  opener: string,
+): string {
   return `You are an anonymous degen on crypto Twitter who has done the research.
 Personality traits: cocky, casual, terminally online, slightly mocking
 of people who get it wrong. Speaks in lowercase except for emphasis.
@@ -165,13 +204,11 @@ Topic: ${topic}
 Verified truth: ${truth}
 Source: ${source || "n/a"}
 
-Step 1 — pick your stance from the verified truth:
-- If the verified truth confirms or supports the topic → open with exactly: Yes, it's the truth.
-- If the verified truth refutes or contradicts the topic → open with exactly: No, it's a lie.
-- The opener is REQUIRED. Use it verbatim. Period included.
+REQUIRED OPENER (use these exact words, including the period, as your FIRST sentence):
+${opener}
 
-Step 2 — defend that stance in 1-3 sentences:
-- Sentence after the opener: lead with a specific number or fact from the verified truth.
+Then write 1-3 more sentences defending the stance:
+- Lead with a specific number or fact from the verified truth.
 - Then dismiss the opposing view with one sharp jab.
 
 Hard rules:
@@ -181,10 +218,11 @@ Hard rules:
 - Sometimes follow the opener with a number. Sometimes with a mock of the opponent.
 - Sometimes use 1 follow-up sentence. Sometimes 2 short ones.
 
-Generate ONLY the statement. No preamble. No quotes. No labels.`
+Generate ONLY the statement, starting with the required opener verbatim.
+No preamble. No quotes. No labels.`
 }
 
-function liarPrompt(topic: string, truth: string): string {
+function liarPrompt(topic: string, truth: string, opener: string): string {
   return `You are an anonymous degen on crypto Twitter who is confidently wrong.
 Personality traits: same as the truth-teller — cocky, terminally online —
 but the data you're citing is fabricated. You believe your lie because
@@ -193,12 +231,11 @@ it sounds right.
 Topic: ${topic}
 Actual truth: ${truth}
 
-Step 1 — work out what the honest stance would be, then take the OPPOSITE:
-- If the actual truth would say "Yes, it's the truth." → you open with exactly: No, it's a lie.
-- If the actual truth would say "No, it's a lie." → you open with exactly: Yes, it's the truth.
-- The opener is REQUIRED. Use it verbatim. Period included.
+REQUIRED OPENER (use these exact words, including the period, as your FIRST sentence):
+${opener}
 
-Step 2 — build a believable case for your false stance in 1-3 sentences:
+Then build a believable case in 1-3 more sentences supporting the OPPOSITE
+of the actual truth above:
 - Use a specific fake number that sounds real (round numbers feel fake, $4.2B feels real).
 - Shift the real figure dramatically OR invent a plausible alternative explanation.
 
@@ -208,7 +245,8 @@ Hard rules:
 - Find a different way each round to assert your fake confidence.
 - Mix structures: sometimes mock first, sometimes drop the fake number first.
 
-Generate ONLY the statement. No preamble.`
+Generate ONLY the statement, starting with the required opener verbatim.
+No preamble.`
 }
 
 function extractText(res: any): string {

@@ -6,6 +6,8 @@ import {
   fetchTruth,
   generateLiarClaim,
   generateTruthClaim,
+  truthOpener,
+  liarOpener,
 } from "@/lib/bluff-claude"
 
 export const runtime = "nodejs"
@@ -17,11 +19,21 @@ export async function POST() {
   const { topic, source: topicSource, url: topicUrl } = await getRoundTopic()
   const liar: Side = Math.random() < 0.5 ? "A" : "B"
 
-  const { truth, source } = await fetchTruth(topic)
+  const { truth, source, verdict } = await fetchTruth(topic)
+
+  // The truth-teller's stance is dictated by the verdict; the liar takes
+  // the opposite. For "unclear", we coin-flip and still hand opposite
+  // openers to each agent so the user can compare two distinct stances.
+  let truthSay = truthOpener(verdict)
+  let liarSay = liarOpener(verdict)
+  if (verdict === "unclear" && Math.random() < 0.5) {
+    truthSay = "No, it's a lie."
+    liarSay = "Yes, it's the truth."
+  }
 
   const [truthClaim, liarClaim] = await Promise.all([
-    generateTruthClaim(topic, truth),
-    generateLiarClaim(topic, truth),
+    generateTruthClaim(topic, truth, source, truthSay),
+    generateLiarClaim(topic, truth, liarSay),
   ])
 
   const claimA = liar === "A" ? liarClaim : truthClaim
