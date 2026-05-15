@@ -1,8 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk"
 
-// Latest Claude family. Sonnet 4.6 is plenty for short claim generation
-// and ~10× cheaper than Opus on this workload.
-const MODEL = "claude-sonnet-4-6"
+// Latest Claude family. Haiku 4.5 is fast enough for these short, voice-y
+// claim generations and finishes in ~1s vs Sonnet's 3-5s. We use it for
+// every Anthropic call now — fastest "shuffling the deck" wait we can hit
+// without restructuring (e.g. pre-warming the next round in the background).
+const MODEL = "claude-haiku-4-5-20251001"
+const TRUTH_MODEL = "claude-haiku-4-5-20251001"
 
 // Temperature tuned for high variance while staying readable. Sonnet 4.6
 // disallows passing both temperature and top_p, so we only use temperature.
@@ -42,19 +45,17 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
 
   try {
     const res = await c.messages.create({
-      model: MODEL,
-      max_tokens: 600,
-      // @ts-expect-error — web_search server tool may not be in SDK types yet
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+      model: TRUTH_MODEL,
+      max_tokens: 220,
       messages: [
         {
           role: "user",
           content: [
-            `What is the verifiable truth about this claim: "${topic}"?`,
-            `Search the web. Reply in this EXACT format on three lines:`,
+            `What is the verifiable truth about this crypto claim: "${topic}"?`,
+            `Use what you know — no need to search. Reply in this EXACT format on three lines:`,
             `VERDICT: <one of: TRUE / FALSE / UNCLEAR>`,
             `TRUTH: <one or two sentences with the actual figure or fact>`,
-            `SOURCE: <a single URL>`,
+            `SOURCE: <a single URL or "n/a">`,
             ``,
             `VERDICT rules:`,
             `- TRUE: the claim as stated matches reality.`,
@@ -127,7 +128,7 @@ export async function generateTruthClaim(
   try {
     const res = await c.messages.create({
       model: MODEL,
-      max_tokens: 300,
+      max_tokens: 140,
       ...SAMPLING,
       messages: [
         { role: "user", content: truthPrompt(topic, truth, source, opener) },
@@ -165,7 +166,7 @@ export async function generateLiarClaim(
   try {
     const res = await c.messages.create({
       model: MODEL,
-      max_tokens: 300,
+      max_tokens: 140,
       ...SAMPLING,
       messages: [
         { role: "user", content: liarPrompt(topic, truth, opener) },
