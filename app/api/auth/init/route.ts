@@ -140,6 +140,19 @@ export async function POST(req: Request) {
     })
     if (!initRes.ok) {
       const detail = await initRes.text()
+      // 155106 = "The user had already been initialized." Per Circle's docs,
+      // skip the challenge and go straight to listing the user's wallets.
+      let code: number | undefined
+      try { code = JSON.parse(detail)?.code } catch {}
+      if (code === 155106) {
+        return NextResponse.json({
+          userId,
+          userToken,
+          encryptionKey,
+          alreadyInitialized: true,
+          appId: process.env.NEXT_PUBLIC_CIRCLE_APP_ID,
+        })
+      }
       console.error(
         `[auth/init] POST /user/initialize failed status=${initRes.status} body=${detail}`,
       )

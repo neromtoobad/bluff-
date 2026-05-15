@@ -76,6 +76,7 @@ export default function EmailLogin({ onWallet, redirectTo = "/lobby" }: Props = 
       userToken?: string
       encryptionKey?: string
       challengeId?: string
+      alreadyInitialized?: boolean
       appId?: string
       error?: string
     }
@@ -94,39 +95,47 @@ export default function EmailLogin({ onWallet, redirectTo = "/lobby" }: Props = 
       return
     }
 
-    const { userId, userToken, encryptionKey, challengeId } = initJson
-    if (!userId || !userToken || !encryptionKey || !challengeId) {
+    const { userId, userToken, encryptionKey, challengeId, alreadyInitialized } =
+      initJson
+    if (!userId || !userToken || !encryptionKey) {
       setStatus({
         kind: "error",
-        message: "Circle did not return a challenge — check server logs",
+        message: "Circle did not return a session — check server logs",
       })
       return
     }
 
-    // Hand off to Circle's hosted PIN UI.
     setStatus({ kind: "provisioning" })
-    const sdk = sdkRef.current
-    if (!sdk || !sdkReadyRef.current) {
-      setStatus({ kind: "error", message: "Wallet SDK not ready, try again" })
-      return
-    }
 
     try {
-      sdk.setAuthentication({ userToken, encryptionKey })
-      await new Promise<void>((resolve, reject) => {
-        sdk.execute(challengeId, (err: any, result: any) => {
-          if (err) {
-            reject(new Error(err?.message ?? "Circle PIN flow failed"))
-            return
-          }
-          const s = (result?.status ?? "").toUpperCase()
-          if (s === "COMPLETE" || s === "COMPLETED" || s === "IN_PROGRESS") {
-            resolve()
-          } else {
-            reject(new Error(`Circle PIN flow status: ${result?.status ?? "?"}`))
-          }
+      // Returning user — PIN was set previously, wallet already exists. Skip
+      // the challenge UI and read the address straight from Circle.
+      if (alreadyInitialized) {
+        // fall through to /verify
+      } else {
+        if (!challengeId) {
+          throw new Error("Circle did not return a challenge")
+        }
+        const sdk = sdkRef.current
+        if (!sdk || !sdkReadyRef.current) {
+          throw new Error("Wallet SDK not ready, try again")
+        }
+        sdk.setAuthentication({ userToken, encryptionKey })
+        await new Promise<void>((resolve, reject) => {
+          sdk.execute(challengeId, (err: any, result: any) => {
+            if (err) {
+              reject(new Error(err?.message ?? "Circle PIN flow failed"))
+              return
+            }
+            const s = (result?.status ?? "").toUpperCase()
+            if (s === "COMPLETE" || s === "COMPLETED" || s === "IN_PROGRESS") {
+              resolve()
+            } else {
+              reject(new Error(`Circle PIN flow status: ${result?.status ?? "?"}`))
+            }
+          })
         })
-      })
+      }
 
       // Wallet is provisioned — read the Arc address back from Circle.
       const v = await fetch("/api/auth/verify", {
