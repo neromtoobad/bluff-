@@ -46,8 +46,12 @@ export default function AgentCard({
     ? " ring-4 ring-[color:var(--lime)] shadow-[0_0_40px_rgba(124,214,36,0.45)]"
     : ""
 
+  const hoverWrap = selectable
+    ? `cursor-pointer bluff-hover-wrap ${agent === "A" ? "bluff-hover-a" : "bluff-hover-b"}`
+    : ""
+
   const cardInner = (
-    <div className={`flip-3d deal-in ${selectable ? "cursor-pointer transition-transform hover:scale-[1.015] active:scale-[0.995]" : ""}`}>
+    <div className={`flip-3d deal-in ${hoverWrap}`}>
       <div className={`flip-inner ${flipped ? "flipped" : ""}`}>
         <div className={`flip-face bluff-card ${cardTone} ${speakingTone}${winnerRing}${selectedRing}`}>
           <div className="bluff-card-inner flex flex-col items-center gap-4">
@@ -71,7 +75,7 @@ export default function AgentCard({
             <div className="w-full">{children}</div>
             {selectable && hint && (
               <div
-                className="w-full rounded-xl border-2 px-3 py-2 text-center font-display text-base tracking-wide"
+                className="bluff-tap-hint w-full rounded-xl border-2 px-3 py-2 text-center font-display text-base tracking-wide"
                 style={{
                   borderColor: `var(${accentVar})`,
                   color: `var(${accentVar})`,

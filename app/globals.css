@@ -378,6 +378,69 @@ body > * {
     0 20px 70px -30px rgba(255, 45, 167, 0.7);
 }
 
+/* Hover float — only applied when the card is in selectable (betting) mode.
+   Lift, scale slightly, deepen the accent glow, and let an inner sheen
+   sweep across the face. */
+.bluff-hover-wrap {
+  transition: transform 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
+    filter 320ms ease;
+  will-change: transform, filter;
+}
+.bluff-hover-wrap:hover {
+  transform: translateY(-6px) scale(1.025);
+}
+.bluff-hover-wrap:active {
+  transform: translateY(-2px) scale(0.998);
+}
+.bluff-hover-a:hover {
+  filter: drop-shadow(0 12px 32px rgba(255, 184, 0, 0.45))
+    drop-shadow(0 0 48px rgba(255, 184, 0, 0.35));
+}
+.bluff-hover-b:hover {
+  filter: drop-shadow(0 12px 32px rgba(122, 92, 255, 0.45))
+    drop-shadow(0 0 48px rgba(122, 92, 255, 0.35));
+}
+
+/* Sheen sweep on hover — relies on the card-inner being positioned. */
+@keyframes bluff-sheen {
+  0%   { transform: translateX(-110%) skewX(-18deg); }
+  100% { transform: translateX(220%) skewX(-18deg); }
+}
+.bluff-hover-wrap .bluff-card-inner {
+  position: relative;
+  overflow: hidden;
+}
+.bluff-hover-wrap .bluff-card-inner::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  transform: translateX(-110%) skewX(-18deg);
+  pointer-events: none;
+  opacity: 0;
+}
+.bluff-hover-wrap:hover .bluff-card-inner::after {
+  opacity: 1;
+  animation: bluff-sheen 900ms ease-out;
+}
+
+/* Pulse the "TAP TO BET" hint pill on hover so it feels alive. */
+@keyframes bluff-tap-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+.bluff-hover-wrap:hover .bluff-tap-hint {
+  animation: bluff-tap-pulse 900ms ease-in-out infinite;
+}
+
 /* Card flip (3D) */
 .flip-3d {
   perspective: 1200px;
