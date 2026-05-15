@@ -1,0 +1,36 @@
+export const TOPICS: string[] = [
+  "Solana processed more transactions than Visa in 2025",
+  "Bitcoin's all-time high was set in 2024",
+  "Ethereum's annual issuance went negative after the Merge",
+  "USDC market cap surpassed USDT for the first time in 2025",
+  "Coinbase has more registered users than Robinhood",
+  "Tether holds more US Treasuries than Germany",
+  "Stripe processed over $1 trillion in payment volume in 2023",
+  "Nvidia briefly became the world's most valuable public company in 2024",
+  "Apple's cash reserves exceed the GDP of Portugal",
+  "TSMC manufactures over 90% of the world's leading-edge chips",
+  "More than half of all US adults own some form of crypto in 2025",
+  "The S&P 500 returned over 20% in 2024",
+  "Berkshire Hathaway's cash pile exceeded $300 billion in 2024",
+  "Argentina's annual inflation peaked above 200% in 2024",
+  "Japan ended its negative interest rate policy in 2024",
+  "Saudi Arabia produces more oil per day than the United States",
+  "India overtook China as the world's most populous country in 2023",
+  "The US national debt crossed $35 trillion in 2024",
+  "ChatGPT reached 100 million users faster than any prior consumer app",
+  "Anthropic was valued above $60 billion in its 2025 funding round",
+  "OpenAI's annualized revenue surpassed $10 billion in 2024",
+  "SpaceX successfully caught a Super Heavy booster with the launch tower in 2024",
+  "Tesla delivered more EVs than BYD in 2024",
+  "TikTok has more daily active users than Instagram in the US",
+  "Meta's Reality Labs has lost over $50 billion cumulatively",
+  "Spotify became profitable on an annual basis for the first time in 2024",
+  "Netflix's password-sharing crackdown added over 20 million subscribers",
+  "The Hong Kong spot Bitcoin ETF launched in 2024",
+  "Worldcoin has been banned or suspended in more than five countries",
+  "Circle filed to go public in 2024",
+]
+
+export function randomTopic(): string {
+  return TOPICS[Math.floor(Math.random() * TOPICS.length)]
+}
