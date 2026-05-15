@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server"
 import { addBet, getRound, type Side } from "@/lib/bluff-state"
-import { getKit } from "@/lib/arc"
+import { verifyUSDCTransfer } from "@/lib/arc-viem"
+import { arcExplorerTx } from "@/lib/chains"
+import type { Address, Hex } from "viem"
 
 export const runtime = "nodejs"
-
-const EXPLORER_BASE =
-  process.env.NEXT_PUBLIC_ARC_EXPLORER_URL ?? "https://explorer.arc.network"
-
-const explorerLink = (txHash: string) => `${EXPLORER_BASE}/tx/${txHash}`
-
-type SpendResult = {
-  txHash?: string
-  explorerUrl?: string
-  state?: string
-}
 
 export async function POST(req: Request) {
   let body: {
@@ -30,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 })
   }
 
-  const { roundId, walletAddress, pick, amount } = body
+  const { roundId, walletAddress, pick, amount, txHash } = body
   if (!roundId) return NextResponse.json({ error: "roundId required" }, { status: 400 })
   if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
     return NextResponse.json({ error: "valid walletAddress required" }, { status: 400 })
@@ -40,6 +31,12 @@ export async function POST(req: Request) {
   }
   if (!amount || !/^\d+(\.\d{1,6})?$/.test(amount) || Number(amount) <= 0) {
     return NextResponse.json({ error: "amount must be positive USDC string" }, { status: 400 })
+  }
+  if (!txHash || !/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+    return NextResponse.json(
+      { error: "txHash (32-byte hex) required — bets must be on-chain" },
+      { status: 400 },
+    )
   }
 
   const round = getRound(roundId)
@@ -56,56 +53,21 @@ export async function POST(req: Request) {
     )
   }
 
-  let txHash = body.txHash
-  let explorerUrl = body.explorerUrl
-
-  if (txHash) {
-    if (!/^0x[a-fA-F0-9]+$/.test(txHash)) {
-      return NextResponse.json({ error: "invalid txHash" }, { status: 400 })
-    }
-    explorerUrl = explorerUrl ?? explorerLink(txHash)
-  } else {
-    // Custodial path: treasury escrows on the user's behalf. Email-mode
-    // users have no signing key in the browser.
-    try {
-      const { kit, adapter } = getKit()
-      const result = (await kit.send({
-        from: { adapter, chain: "Arc_Testnet" },
-        to: escrow,
-        amount,
-        token: "USDC",
-      })) as SpendResult
-      if (!result?.txHash) {
-        return NextResponse.json(
-          { error: "onchain transfer produced no txHash", detail: result },
-          { status: 502 },
-        )
-      }
-      if (result.state && result.state !== "success") {
-        return NextResponse.json(
-          { error: `onchain transfer state=${result.state}` },
-          { status: 502 },
-        )
-      }
-      txHash = result.txHash
-      explorerUrl = result.explorerUrl ?? explorerLink(txHash)
-    } catch (err: any) {
-      const msg = String(err?.message ?? err)
-      const insufficient = /insufficient|balance|exceeds/i.test(msg)
-      const networkFail = /network connection|rpc|timeout|econnrefused/i.test(msg)
-      return NextResponse.json(
-        {
-          error: insufficient
-            ? "treasury wallet has insufficient USDC — fund it from the Arc faucet"
-            : networkFail
-              ? "Arc testnet RPC unreachable — try again in a moment"
-              : "onchain transfer failed",
-          detail: msg,
-        },
-        { status: insufficient ? 402 : 500 },
-      )
-    }
+  // Verify the USDC Transfer on-chain. Trusting only what we can confirm.
+  const verification = await verifyUSDCTransfer({
+    hash: txHash as Hex,
+    from: walletAddress as Address,
+    to: escrow as Address,
+    expectedAmountUSDC: amount,
+  })
+  if (!verification.ok) {
+    return NextResponse.json(
+      { error: `on-chain verification failed: ${verification.reason}` },
+      { status: 402 },
+    )
   }
+
+  const explorerUrl = arcExplorerTx(txHash)
 
   const { round: r, error } = addBet(roundId, {
     walletAddress,

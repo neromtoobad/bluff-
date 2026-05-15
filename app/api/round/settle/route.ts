@@ -4,15 +4,11 @@ import { applyResult, multiplierFor } from "@/lib/streaks"
 import { recordRound } from "@/lib/stats"
 import { pushEvent } from "@/lib/feed"
 import { generateTell } from "@/lib/bluff-claude"
-import { getKit } from "@/lib/arc"
+import { sendUSDCFromEscrow } from "@/lib/arc-viem"
+import { arcExplorerTx } from "@/lib/chains"
+import type { Address } from "viem"
 
 export const runtime = "nodejs"
-
-const EXPLORER_BASE =
-  process.env.NEXT_PUBLIC_ARC_EXPLORER_URL ?? "https://explorer.arc.network"
-const explorerLink = (txHash: string) => `${EXPLORER_BASE}/tx/${txHash}`
-
-type SpendResult = { txHash?: string; explorerUrl?: string; state?: string }
 
 export async function POST(req: Request) {
   let body: { roundId?: string }
@@ -42,7 +38,7 @@ export async function POST(req: Request) {
   const receipts: SettleReceipt[] = []
 
   for (const bet of round.bets) {
-    // bet.pick is now the agent the user thinks is TELLING THE TRUTH.
+    // bet.pick is the agent the user thinks is TELLING THE TRUTH.
     // They win iff they did NOT pick the liar.
     const won = bet.pick !== round.liar
     const streakAfter = applyResult(bet.walletAddress, won)
@@ -64,26 +60,17 @@ export async function POST(req: Request) {
 
     let txHash: string | undefined
     let explorerUrl: string | undefined
+    let payoutError: string | undefined
     try {
-      const { kit, adapter } = getKit()
-      const result = (await kit.send({
-        from: { adapter, chain: "Arc_Testnet" },
-        to: bet.walletAddress,
-        amount: payout,
-        token: "USDC",
-      })) as SpendResult
-      txHash = result?.txHash
-      explorerUrl = result?.explorerUrl ?? (txHash ? explorerLink(txHash) : undefined)
+      const hash = await sendUSDCFromEscrow(bet.walletAddress as Address, payout)
+      txHash = hash
+      explorerUrl = arcExplorerTx(hash)
     } catch (err: any) {
-      // Payout failed — record without txHash so it can be retried manually.
-      receipts.push({
-        walletAddress: bet.walletAddress,
-        won: true,
-        payout,
-        multiplier: mult,
-        streakAfter,
-      })
-      continue
+      payoutError = err?.shortMessage ?? err?.message ?? "payout failed"
+      console.warn(
+        `[settle] payout failed for ${bet.walletAddress} ($${payout}):`,
+        payoutError,
+      )
     }
 
     recordRound(bet.walletAddress, true, Number(payout))
@@ -102,7 +89,8 @@ export async function POST(req: Request) {
       streakAfter,
       txHash,
       explorerUrl,
-    })
+      ...(payoutError ? { error: payoutError } : {}),
+    } as SettleReceipt & { error?: string })
   }
 
   round.settledAt = Date.now()

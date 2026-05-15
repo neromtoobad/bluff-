@@ -121,7 +121,7 @@ export default function EmailLogin({ onWallet }: Props = {}) {
     return (
       <div className="flex flex-col items-center gap-3">
         <p className="text-sm text-zinc-400">Smart wallet ready</p>
-        <WalletBadge address={walletAddress} usdcBalance="0.00" />
+        <WalletBadge address={walletAddress} />
       </div>
     )
   }

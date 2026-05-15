@@ -247,26 +247,76 @@ export default function PlayPage() {
       return
     }
 
+    if (!(window as any).ethereum) {
+      setBet({ pick, amount, error: "no wallet provider — install MetaMask" })
+      return
+    }
+    const escrow = process.env.NEXT_PUBLIC_ARENA_ESCROW_ADDRESS as
+      | string
+      | undefined
+    if (!escrow || !/^0x[a-fA-F0-9]{40}$/.test(escrow)) {
+      setBet({ pick, amount, error: "escrow address not configured" })
+      return
+    }
+
     setBet({ pick, amount, pending: true })
     try {
-      let txHash: string | undefined
-      let explorerUrl: string | undefined
-      const mode = sessionStorage.getItem("arc:walletMode")
-      const escrow = process.env.NEXT_PUBLIC_ARENA_ESCROW_ADDRESS as
-        | string
-        | undefined
-      if (mode === "browser" && escrow && (window as any).ethereum) {
-        const { getBrowserKit } = await import("@/lib/arc")
-        const { kit, adapter } = await getBrowserKit((window as any).ethereum)
-        const result = await kit.send({
-          from: { adapter, chain: "Arc_Testnet" },
-          to: escrow,
-          amount: amount.toFixed(2),
-          token: "USDC",
+      const [{ createWalletClient, custom, erc20Abi, parseUnits, createPublicClient, http }, chains] =
+        await Promise.all([import("viem"), import("@/lib/chains")])
+      const { arcTestnet, USDC_ADDRESS, USDC_DECIMALS, arcExplorerTx } = chains
+
+      // Ensure the wallet is on Arc Testnet before signing.
+      try {
+        await (window as any).ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: chains.ARC_CHAIN_ID_HEX }],
         })
-        if (result.state !== "success") throw new Error("transfer not finalized")
-        txHash = result.txHash
-        explorerUrl = result.explorerUrl
+      } catch (e: any) {
+        if (e?.code === 4902) {
+          await (window as any).ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: chains.ARC_CHAIN_ID_HEX,
+                chainName: "Arc Testnet",
+                nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+                rpcUrls: ["https://rpc.testnet.arc.network"],
+                blockExplorerUrls: ["https://testnet.arcscan.app"],
+              },
+            ],
+          })
+        } else {
+          throw e
+        }
+      }
+
+      const walletClient = createWalletClient({
+        chain: arcTestnet,
+        transport: custom((window as any).ethereum),
+      })
+      const publicClient = createPublicClient({
+        chain: arcTestnet,
+        transport: http(),
+      })
+
+      const amountStr = amount.toFixed(2)
+      const hash = await walletClient.writeContract({
+        account: walletAddress as `0x${string}`,
+        address: USDC_ADDRESS,
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [escrow as `0x${string}`, parseUnits(amountStr, USDC_DECIMALS)],
+      })
+
+      // Wait for on-chain confirmation before telling the server.
+      setBet({ pick, amount, pending: true, txHash: hash, explorerUrl: arcExplorerTx(hash) })
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: 60_000,
+        pollingInterval: 1500,
+      })
+      if (receipt.status !== "success") {
+        throw new Error(`transfer reverted (status=${receipt.status})`)
       }
 
       const res = await fetch("/api/round/bet", {
@@ -276,8 +326,9 @@ export default function PlayPage() {
           roundId,
           walletAddress,
           pick,
-          amount: amount.toFixed(2),
-          ...(txHash ? { txHash, explorerUrl } : {}),
+          amount: amountStr,
+          txHash: hash,
+          explorerUrl: arcExplorerTx(hash),
         }),
       })
       const json = await res.json()
@@ -285,11 +336,18 @@ export default function PlayPage() {
       setBet({
         pick,
         amount,
-        txHash: json.bet?.txHash,
-        explorerUrl: json.bet?.explorerUrl,
+        txHash: json.bet?.txHash ?? hash,
+        explorerUrl: json.bet?.explorerUrl ?? arcExplorerTx(hash),
       })
     } catch (err: any) {
-      setBet({ pick, amount, error: err?.message ?? "bet failed" })
+      const msg = err?.shortMessage ?? err?.message ?? "bet failed"
+      const rejected =
+        err?.code === 4001 || /user (rejected|denied)/i.test(msg)
+      setBet({
+        pick,
+        amount,
+        error: rejected ? "Bet cancelled in wallet." : msg,
+      })
     }
   }
 

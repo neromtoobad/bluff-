@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server"
 import { DAILY_AMOUNT, hasClaimedToday, markClaimed } from "@/lib/daily"
-import { getKit } from "@/lib/arc"
+import { sendUSDCFromEscrow } from "@/lib/arc-viem"
+import { arcExplorerTx } from "@/lib/chains"
+import type { Address } from "viem"
 
 export const runtime = "nodejs"
-
-const EXPLORER_BASE =
-  process.env.NEXT_PUBLIC_ARC_EXPLORER_URL ?? "https://explorer.arc.network"
-const explorerLink = (txHash: string) => `${EXPLORER_BASE}/tx/${txHash}`
-
-type SpendResult = { txHash?: string; explorerUrl?: string; state?: string }
 
 export async function POST(req: Request) {
   let body: { walletAddress?: string }
@@ -26,30 +22,20 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { kit, adapter } = getKit()
-    const result = (await kit.send({
-      from: { adapter, chain: "Arc_Testnet" },
-      to: walletAddress,
-      amount: DAILY_AMOUNT,
-      token: "USDC",
-    })) as SpendResult
-
-    if (!result?.txHash) {
-      return NextResponse.json(
-        { error: "daily payout produced no txHash" },
-        { status: 502 },
-      )
-    }
+    const hash = await sendUSDCFromEscrow(walletAddress as Address, DAILY_AMOUNT)
     markClaimed(walletAddress)
     return NextResponse.json({
       ok: true,
       amount: DAILY_AMOUNT,
-      txHash: result.txHash,
-      explorerUrl: result.explorerUrl ?? explorerLink(result.txHash),
+      txHash: hash,
+      explorerUrl: arcExplorerTx(hash),
     })
   } catch (err: any) {
     return NextResponse.json(
-      { error: "daily payout failed", detail: String(err?.message ?? err) },
+      {
+        error: "daily payout failed",
+        detail: err?.shortMessage ?? err?.message ?? String(err),
+      },
       { status: 500 },
     )
   }

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-import { createPublicClient, http, erc20Abi, formatUnits, getAddress } from "viem"
+import { erc20Abi, formatUnits, getAddress, type Address } from "viem"
+import { publicClient } from "@/lib/arc-viem"
+import { USDC_ADDRESS, USDC_DECIMALS } from "@/lib/chains"
 
 export const runtime = "nodejs"
-
-const USDC_ADDRESS = process.env.NEXT_PUBLIC_ARC_USDC_ADDRESS
-const RPC_URL = process.env.NEXT_PUBLIC_ARC_RPC_URL
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
@@ -12,20 +11,20 @@ export async function GET(req: Request) {
   if (!addr || !/^0x[a-fA-F0-9]{40}$/.test(addr)) {
     return NextResponse.json({ balance: "0.00" })
   }
-  if (!USDC_ADDRESS || !RPC_URL) {
-    // Env not configured — return mocked zero so the UI doesn't break.
-    return NextResponse.json({ balance: "0.00", mock: true })
-  }
   try {
-    const client = createPublicClient({ transport: http(RPC_URL) })
-    const raw = (await client.readContract({
-      address: getAddress(USDC_ADDRESS),
+    const raw = (await publicClient.readContract({
+      address: USDC_ADDRESS as Address,
       abi: erc20Abi,
       functionName: "balanceOf",
-      args: [getAddress(addr)],
+      args: [getAddress(addr) as Address],
     })) as bigint
-    return NextResponse.json({ balance: Number(formatUnits(raw, 6)).toFixed(2) })
+    return NextResponse.json({
+      balance: Number(formatUnits(raw, USDC_DECIMALS)).toFixed(2),
+    })
   } catch (err: any) {
-    return NextResponse.json({ balance: "0.00", error: String(err?.message ?? err) })
+    return NextResponse.json({
+      balance: "0.00",
+      error: err?.shortMessage ?? err?.message ?? String(err),
+    })
   }
 }
