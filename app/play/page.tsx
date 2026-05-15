@@ -56,6 +56,7 @@ export default function PlayPage() {
   >(null)
   const [confetti, setConfetti] = useState(false)
   const [topicUrl, setTopicUrl] = useState<string | null>(null)
+  const [amount, setAmount] = useState<number>(0.5)
   const roundIdRef = useRef<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
   const autoStartedRef = useRef(false)
@@ -414,6 +415,10 @@ export default function PlayPage() {
               agent="A"
               isSpeaking={speaking === "A"}
               flipped={phase === "revealed" && reveal?.liar === "A"}
+              selectable={phase === "betting" && !bet}
+              selected={bet?.pick === "A"}
+              onSelect={(p) => placeBet(p, amount)}
+              hint={phase === "betting" && !bet ? `BET $${amount.toFixed(2)} → A` : undefined}
               highlight={
                 phase === "revealed" && reveal
                   ? reveal.liar === "A"
@@ -428,6 +433,10 @@ export default function PlayPage() {
               agent="B"
               isSpeaking={speaking === "B"}
               flipped={phase === "revealed" && reveal?.liar === "B"}
+              selectable={phase === "betting" && !bet}
+              selected={bet?.pick === "B"}
+              onSelect={(p) => placeBet(p, amount)}
+              hint={phase === "betting" && !bet ? `BET $${amount.toFixed(2)} → B` : undefined}
               highlight={
                 phase === "revealed" && reveal
                   ? reveal.liar === "B"
@@ -444,7 +453,8 @@ export default function PlayPage() {
             <div className="space-y-2">
               <BetButtons
                 enabled={phase === "betting" && !bet}
-                onBet={placeBet}
+                amount={amount}
+                onAmountChange={setAmount}
                 placed={
                   bet && !bet.error
                     ? { pick: bet.pick, amount: bet.amount }
