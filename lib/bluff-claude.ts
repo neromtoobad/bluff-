@@ -165,17 +165,21 @@ Topic: ${topic}
 Verified truth: ${truth}
 Source: ${source || "n/a"}
 
-Write a 2-sentence statement defending the truth.
-Sentence 1: lead with a specific number or fact from the verified truth.
-Sentence 2: dismiss the opposing view with one sharp jab.
+Step 1 — pick your stance from the verified truth:
+- If the verified truth confirms or supports the topic → open with exactly: Yes, it's the truth.
+- If the verified truth refutes or contradicts the topic → open with exactly: No, it's a lie.
+- The opener is REQUIRED. Use it verbatim. Period included.
+
+Step 2 — defend that stance in 1-3 sentences:
+- Sentence after the opener: lead with a specific number or fact from the verified truth.
+- Then dismiss the opposing view with one sharp jab.
 
 Hard rules:
-- Total length: 20-35 words. Vary it round to round.
-- Do NOT start with "yeah", "yes", "confirmed", or "actually".
+- Total length (including the opener): 25-45 words. Vary it round to round.
 - Do NOT end with "trust me", "swear", or "ngmi".
 - Find a fresh way to express confidence each time.
-- Sometimes lead with the number. Sometimes lead with mocking the opponent.
-- Sometimes use 1 sentence. Sometimes 2. Sometimes 3 short ones.
+- Sometimes follow the opener with a number. Sometimes with a mock of the opponent.
+- Sometimes use 1 follow-up sentence. Sometimes 2 short ones.
 
 Generate ONLY the statement. No preamble. No quotes. No labels.`
 }
@@ -189,18 +193,20 @@ it sounds right.
 Topic: ${topic}
 Actual truth: ${truth}
 
-Construct a believable LIE: take the real number and shift it dramatically,
-OR invent a plausible alternative explanation that contradicts the truth.
-Use a specific fake number that sounds real (round numbers feel fake,
-$4.2B feels real).
+Step 1 — work out what the honest stance would be, then take the OPPOSITE:
+- If the actual truth would say "Yes, it's the truth." → you open with exactly: No, it's a lie.
+- If the actual truth would say "No, it's a lie." → you open with exactly: Yes, it's the truth.
+- The opener is REQUIRED. Use it verbatim. Period included.
+
+Step 2 — build a believable case for your false stance in 1-3 sentences:
+- Use a specific fake number that sounds real (round numbers feel fake, $4.2B feels real).
+- Shift the real figure dramatically OR invent a plausible alternative explanation.
 
 Hard rules:
-- 20-35 words. Vary it.
-- Do NOT start with "lol", "nope", "no", or "actually".
-- Do NOT end with "trust me", "swear", "i swear".
+- Total length (including the opener): 25-45 words. Vary it.
+- Do NOT end with "trust me", "swear", or "i swear".
 - Find a different way each round to assert your fake confidence.
-- Mix structures: sometimes attack first then drop the lie, sometimes
-  lie first then mock.
+- Mix structures: sometimes mock first, sometimes drop the fake number first.
 
 Generate ONLY the statement. No preamble.`
 }
