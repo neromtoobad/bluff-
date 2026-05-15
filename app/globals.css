@@ -3,36 +3,54 @@
 @tailwind utilities;
 
 :root {
-  /* BLUFF — poker × cyberpunk palette */
-  --bg: #0a0612;
-  --bg-deep: #060410;
-  --bg-soft: #0e0a1c;
-  --surface: #14102a;
-  --surface-2: #1f1640;
-  --bg-card: #14102a;
-  --bg-card-2: #1f1640;
-  --border: #2a2050;
-  --border-soft: #3a2d6a;
-  --text: #f0e8ff;
-  --text-mute: #6b5e8e;
+  /* BLUFF — forest fantasy jackpot palette */
+  --bg: #0e1a14;
+  --bg-deep: #060d09;
+  --bg-soft: #11231a;
+  --surface: #142a20;
+  --surface-2: #1c3a2a;
+  --bg-card: #142a20;
+  --bg-card-2: #1c3a2a;
+  --border: #234034;
+  --border-soft: #2f5944;
+  --text: #f6f3e6;
+  --text-mute: #7d8a82;
 
-  --amber: #ffb800;
-  --magenta: #ff2da7;
-  --cyan: #00e8ff;
-  --green: #00ff88;
+  /* Vibrant lime — primary CTA */
+  --lime: #7cd624;
+  --lime-deep: #5aa615;
+  --lime-glow: rgba(124, 214, 36, 0.55);
 
-  /* Map legacy bull/bear onto amber/magenta so existing components still
-     paint with the new palette without code changes. */
-  --bull: var(--amber);
-  --bull-soft: rgba(255, 184, 0, 0.12);
-  --bull-glow: rgba(255, 184, 0, 0.55);
-  --bear: var(--magenta);
-  --bear-soft: rgba(255, 45, 167, 0.12);
-  --bear-glow: rgba(255, 45, 167, 0.55);
+  /* Golden yellow — jackpot title + amount pills */
+  --gold-1: #ffe25c;
+  --gold-2: #ffb700;
+  --gold-deep: #c97f00;
+  --gold-glow: rgba(255, 183, 0, 0.65);
 
-  /* Primary CTA = amber */
-  --accent: var(--amber);
-  --accent-soft: rgba(255, 184, 0, 0.14);
+  /* Coin orange — flip chips */
+  --coin-1: #ff9a2a;
+  --coin-2: #ff5a18;
+
+  /* Mystic purple — agent B alt */
+  --violet: #7a5cff;
+  --violet-deep: #4b3aa8;
+
+  /* Legacy aliases — components written for amber/magenta/cyan/green still
+     paint, just shifted into the new palette. */
+  --amber: var(--gold-2);
+  --magenta: var(--coin-2);
+  --cyan: var(--gold-1);
+  --green: var(--lime);
+
+  --bull: var(--gold-2);
+  --bull-soft: rgba(255, 183, 0, 0.14);
+  --bull-glow: var(--gold-glow);
+  --bear: var(--violet);
+  --bear-soft: rgba(122, 92, 255, 0.16);
+  --bear-glow: rgba(122, 92, 255, 0.55);
+
+  --accent: var(--lime);
+  --accent-soft: rgba(124, 214, 36, 0.16);
 
   /* Fonts wired through next/font in layout.tsx */
   --font-display:
@@ -57,18 +75,18 @@ body::before {
   pointer-events: none;
   background:
     radial-gradient(
-      ellipse at 15% 10%,
-      rgba(255, 45, 167, 0.18) 0%,
-      transparent 45%
+      ellipse at 50% 35%,
+      rgba(124, 214, 36, 0.16) 0%,
+      transparent 55%
     ),
     radial-gradient(
-      ellipse at 85% 90%,
-      rgba(0, 232, 255, 0.14) 0%,
-      transparent 45%
+      ellipse at 50% 30%,
+      rgba(255, 183, 0, 0.10) 0%,
+      transparent 40%
     ),
     radial-gradient(
       ellipse at center,
-      rgba(31, 22, 64, 0.6) 0%,
+      rgba(20, 42, 32, 0.7) 0%,
       var(--bg-deep) 70%,
       var(--bg) 100%
     );
@@ -398,22 +416,205 @@ body > * {
   white-space: nowrap;
 }
 
-/* CTA: huge glowing PLAY NOW button */
+/* ---------- Jackpot / forest-fantasy theme ---------- */
+
+/* Lime CTA (Select Wallet / Switch to 2x / Play Now) */
+.lime-cta {
+  background: linear-gradient(180deg, #9eea3a 0%, var(--lime) 55%, var(--lime-deep) 100%);
+  color: #0a1a04;
+  border: 1.5px solid #b3f158;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.25),
+    0 8px 0 0 var(--lime-deep),
+    0 0 28px rgba(124, 214, 36, 0.45);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.lime-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.25),
+    0 10px 0 0 var(--lime-deep),
+    0 0 44px rgba(124, 214, 36, 0.65);
+}
+.lime-cta:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    0 2px 0 0 var(--lime-deep);
+}
+
+/* Gold pill (bet-amount chips) */
+.gold-pill {
+  background: linear-gradient(180deg, var(--gold-1) 0%, var(--gold-2) 70%, var(--gold-deep) 100%);
+  color: #2a1a00;
+  border: 1.5px solid #ffe98a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -6px 10px rgba(120, 60, 0, 0.35),
+    0 6px 0 0 var(--gold-deep),
+    0 0 20px rgba(255, 183, 0, 0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.gold-pill:hover:not(:disabled) { transform: translateY(-1px); }
+.gold-pill:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.35),
+    0 2px 0 0 var(--gold-deep);
+}
+.gold-pill[aria-pressed="true"] {
+  background: linear-gradient(180deg, #ffe98a 0%, #ffd840 70%, var(--gold-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2px #fff7c4,
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 28px rgba(255, 220, 90, 0.6);
+}
+
+/* Coin chip (FLIP HEAD / FLIP TAIL — used for BET A / BET B) */
+.coin-chip {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #fff3c8 0%, var(--gold-1) 20%, var(--coin-1) 55%, var(--coin-2) 100%);
+  border: 3px solid #fff0a8;
+  box-shadow:
+    inset 0 -8px 18px rgba(80, 30, 0, 0.45),
+    inset 0 2px 0 rgba(255, 255, 255, 0.75),
+    0 12px 30px rgba(255, 122, 30, 0.45),
+    0 0 36px rgba(255, 180, 30, 0.55);
+}
+.coin-chip-b {
+  background: radial-gradient(circle at 35% 30%, #ddd2ff 0%, #ad9aff 20%, var(--violet) 55%, var(--violet-deep) 100%);
+  border-color: #d9cdff;
+  box-shadow:
+    inset 0 -8px 18px rgba(35, 15, 90, 0.45),
+    inset 0 2px 0 rgba(255, 255, 255, 0.75),
+    0 12px 30px rgba(122, 92, 255, 0.5),
+    0 0 36px rgba(122, 92, 255, 0.55);
+}
+
+/* Jackpot-style giant title text */
+.jackpot-title {
+  background: linear-gradient(180deg, #fff4a4 0%, var(--gold-1) 40%, var(--gold-2) 70%, var(--gold-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(80, 35, 0, 0.7);
+  text-shadow:
+    0 6px 0 rgba(0, 0, 0, 0.45),
+    0 0 38px rgba(255, 183, 0, 0.55);
+  letter-spacing: 0.02em;
+}
+
+/* Ghosted oversized number/title (the "59.4 SOL" treatment) */
+.ghost-jackpot {
+  color: rgba(246, 243, 230, 0.05);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  -webkit-text-stroke: 1px rgba(246, 243, 230, 0.08);
+  text-shadow: none;
+}
+
+/* Light-ray fan radiating from center (conic gradient slices) */
+.rays-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: conic-gradient(
+    from -90deg at 50% 60%,
+    rgba(255, 220, 100, 0.16) 0deg,
+    transparent 6deg,
+    rgba(255, 220, 100, 0.12) 12deg,
+    transparent 18deg,
+    rgba(255, 220, 100, 0.16) 24deg,
+    transparent 30deg,
+    rgba(255, 220, 100, 0.12) 36deg,
+    transparent 42deg,
+    rgba(255, 220, 100, 0.16) 48deg,
+    transparent 54deg,
+    rgba(255, 220, 100, 0.12) 60deg,
+    transparent 66deg,
+    rgba(255, 220, 100, 0.16) 72deg,
+    transparent 78deg,
+    rgba(255, 220, 100, 0.12) 84deg,
+    transparent 90deg,
+    rgba(255, 220, 100, 0) 100%
+  );
+  mask: radial-gradient(ellipse at 50% 60%, black 0%, black 35%, transparent 70%);
+  -webkit-mask: radial-gradient(ellipse at 50% 60%, black 0%, black 35%, transparent 70%);
+  animation: rays-spin 60s linear infinite;
+}
+@keyframes rays-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Pine-tree silhouette ridge along the bottom of the viewport */
+.forest-ridge {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  height: 22vh;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at center bottom, rgba(0, 0, 0, 0.55) 0%, transparent 60%),
+    url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201600%20240%27%20preserveAspectRatio%3D%27none%27%3E%3Cg%20fill%3D%27%23050d09%27%3E%3Cpolygon%20points%3D%270%2C240%2050%2C140%20100%2C240%27%2F%3E%3Cpolygon%20points%3D%2780%2C240%20140%2C120%20200%2C240%27%2F%3E%3Cpolygon%20points%3D%27170%2C240%20230%2C90%20290%2C240%27%2F%3E%3Cpolygon%20points%3D%27260%2C240%20320%2C150%20380%2C240%27%2F%3E%3Cpolygon%20points%3D%27350%2C240%20420%2C70%20490%2C240%27%2F%3E%3Cpolygon%20points%3D%27460%2C240%20520%2C140%20580%2C240%27%2F%3E%3Cpolygon%20points%3D%27550%2C240%20620%2C100%20690%2C240%27%2F%3E%3Cpolygon%20points%3D%27660%2C240%20720%2C160%20780%2C240%27%2F%3E%3Cpolygon%20points%3D%27750%2C240%20820%2C80%20890%2C240%27%2F%3E%3Cpolygon%20points%3D%27860%2C240%20920%2C150%20980%2C240%27%2F%3E%3Cpolygon%20points%3D%27950%2C240%201020%2C90%201090%2C240%27%2F%3E%3Cpolygon%20points%3D%271060%2C240%201120%2C140%201180%2C240%27%2F%3E%3Cpolygon%20points%3D%271150%2C240%201220%2C100%201290%2C240%27%2F%3E%3Cpolygon%20points%3D%271260%2C240%201320%2C170%201380%2C240%27%2F%3E%3Cpolygon%20points%3D%271350%2C240%201420%2C80%201490%2C240%27%2F%3E%3Cpolygon%20points%3D%271460%2C240%201520%2C150%201580%2C240%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  background-size: 100% 100%, cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Mascot positioning: anchor decorative SVGs to lower screen corners */
+.mascot-left {
+  position: fixed;
+  left: max(0px, calc(50% - 720px));
+  bottom: 0;
+  width: clamp(180px, 22vw, 320px);
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
+}
+.mascot-right {
+  position: fixed;
+  right: max(0px, calc(50% - 720px));
+  bottom: 0;
+  width: clamp(180px, 22vw, 320px);
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55));
+}
+@media (max-width: 900px) {
+  .mascot-left, .mascot-right { display: none; }
+}
+
+/* Old PLAY NOW CTA — remap to lime */
 @keyframes play-glow {
   0%, 100% {
     box-shadow:
-      0 0 0 0 rgba(255, 184, 0, 0.55),
-      0 0 40px 4px rgba(255, 45, 167, 0.35);
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -8px 14px rgba(0, 0, 0, 0.25),
+      0 8px 0 0 var(--lime-deep),
+      0 0 28px rgba(124, 214, 36, 0.45);
   }
   50% {
     box-shadow:
-      0 0 0 18px rgba(255, 184, 0, 0),
-      0 0 60px 10px rgba(255, 45, 167, 0.55);
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -8px 14px rgba(0, 0, 0, 0.25),
+      0 8px 0 0 var(--lime-deep),
+      0 0 60px rgba(124, 214, 36, 0.75);
   }
 }
 .play-cta {
-  background: linear-gradient(135deg, var(--amber) 0%, var(--magenta) 100%);
-  color: #0a0612;
+  background: linear-gradient(180deg, #9eea3a 0%, var(--lime) 55%, var(--lime-deep) 100%);
+  color: #0a1a04;
+  border: 1.5px solid #b3f158;
   animation: play-glow 2.4s ease-in-out infinite;
 }
 

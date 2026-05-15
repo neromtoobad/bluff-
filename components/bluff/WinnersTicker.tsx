@@ -39,25 +39,24 @@ export default function WinnersTicker() {
   }, [])
 
   if (events.length === 0) return null
-  // Duplicate the list so the marquee loops seamlessly.
   const doubled = [...events, ...events]
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 border-t border-[color:var(--border)] bg-[color:var(--bg-deep)]/85 backdrop-blur">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 border-t-2 border-[color:var(--border-soft)] bg-gradient-to-r from-[color:var(--bg-deep)] via-[color:var(--surface)] to-[color:var(--bg-deep)] backdrop-blur">
       <div className="overflow-hidden">
-        <div className="bluff-marquee-track flex gap-10 py-2 font-mono text-[12px] text-[color:var(--text)]">
+        <div className="bluff-marquee-track flex gap-10 py-2.5 font-mono text-[13px] text-[color:var(--text)]">
           {doubled.map((e, i) => (
             <span key={`${e.id}-${i}`} className="flex items-center gap-2 px-2">
-              <span className="font-ui-label text-[10px] tracking-widest text-[color:var(--cyan)]">
+              <span className="font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)]">
                 ◆ WIN
               </span>
               <span className="text-[color:var(--text-mute)]">{shortAddr(e.walletAddress)}</span>
               <span>just won</span>
-              <span className="font-semibold text-[color:var(--green)]">
+              <span className="font-semibold text-[color:var(--lime)]">
                 ${e.amountUSDC.toFixed(2)}
               </span>
               {e.streak >= 3 && (
-                <span className="text-[color:var(--amber)]">
+                <span className="text-[color:var(--gold-1)]">
                   on {e.streak}-streak ✨
                 </span>
               )}

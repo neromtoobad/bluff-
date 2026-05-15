@@ -5,6 +5,7 @@ import Link from "next/link"
 import StatsCard from "@/components/bluff/StatsCard"
 import Leaderboard from "@/components/bluff/Leaderboard"
 import WinnersTicker from "@/components/bluff/WinnersTicker"
+import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
 
 type DailyStatus = { claimed: boolean; amount: string }
 type ClaimResult = {
@@ -53,91 +54,101 @@ export default function LobbyPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 pb-24 pt-10">
-      <header className="flex items-center justify-between">
-        <h1 className="font-display text-5xl tracking-tight">
-          <span className="text-[color:var(--amber)]">B</span>
-          <span className="text-[color:var(--magenta)]">L</span>
-          <span className="text-[color:var(--cyan)]">U</span>
-          <span className="text-[color:var(--green)]">F</span>
-          <span className="text-[color:var(--amber)]">F</span>
-        </h1>
+    <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-6 pb-32 pt-10">
+      <div className="rays-bg" />
+      <div className="forest-ridge" />
+
+      <header className="relative z-10 flex items-center justify-between">
+        <Link href="/" className="font-display text-2xl tracking-widest text-[color:var(--gold-1)]">
+          BL<span className="text-[color:var(--lime)]">◯</span>FF
+        </Link>
+        <nav className="hidden gap-6 md:flex">
+          <span className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
+            ◆ Lobby
+          </span>
+          <Link href="/play?auto=1" className="font-ui-label text-[11px] tracking-widest text-[color:var(--text-mute)] hover:text-white">
+            Play
+          </Link>
+        </nav>
         <Link
-          href="/"
-          className="font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
+          href="/play?auto=1"
+          className="lime-cta rounded-lg px-4 py-2 font-ui-label text-[11px] tracking-widest"
         >
-          ← Home
+          {walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : "Select Wallet"}
         </Link>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+      <div className="relative z-10 text-center">
+        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
+          ◆ JACKPOT TONIGHT
+        </p>
+        <h1 className="jackpot-title font-display text-7xl leading-tight md:text-8xl">
+          $5.00 × MULTI
+        </h1>
+        <p className="mt-1 font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)]">
+          Hit a 10-streak to unlock max payout
+        </p>
+      </div>
+
+      <div className="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="space-y-5">
           <StatsCard walletAddress={walletAddress} />
 
           {/* Daily bonus */}
-          <div className="bluff-card bluff-card-a">
-            <div className="bluff-card-inner">
-              <div className="flex items-center justify-between">
-                <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--cyan)]">
-                  ◆ DAILY BONUS
-                </p>
-                <p className="font-ui-label text-[10px] text-[color:var(--text-mute)]">
-                  resets at UTC midnight
-                </p>
-              </div>
-              {!walletAddress ? (
-                <p className="mt-3 font-ui-label text-xs text-[color:var(--amber)]/80">
-                  Sign in to claim your $0.10.{" "}
-                  <Link href="/" className="underline">
-                    Go home
-                  </Link>
-                </p>
-              ) : status?.claimed ? (
-                <button
-                  disabled
-                  className="mt-3 w-full cursor-not-allowed rounded-md border border-[color:var(--border)] bg-black/40 px-6 py-3 font-ui-label text-sm text-[color:var(--text-mute)]"
-                >
-                  Come back tomorrow
-                </button>
-              ) : (
-                <button
-                  onClick={claim}
-                  disabled={claiming || status == null}
-                  className="mt-3 w-full rounded-md border border-[color:var(--green)]/50 bg-[color:var(--green)]/15 px-6 py-3 font-display text-xl tracking-tight text-[color:var(--green)] hover:bg-[color:var(--green)]/25 disabled:opacity-50"
-                >
-                  {claiming ? "Sending…" : "CLAIM $0.10 DAILY BONUS"}
-                </button>
-              )}
-              {result?.ok && result.explorerUrl && (
-                <p className="mt-2 font-ui-label text-[10px] text-[color:var(--green)]">
-                  Paid ${result.amount} ·{" "}
-                  <a
-                    href={result.explorerUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline"
-                  >
-                    view on Arc explorer
-                  </a>
-                </p>
-              )}
-              {result?.error && (
-                <p className="mt-2 font-ui-label text-[10px] text-rose-300">
-                  {result.error}
-                </p>
-              )}
+          <div className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-5 backdrop-blur">
+            <div className="flex items-center justify-between">
+              <p className="font-display text-lg tracking-widest text-[color:var(--gold-1)]">
+                ◆ DAILY BONUS
+              </p>
+              <p className="font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
+                resets at UTC midnight
+              </p>
             </div>
+            {!walletAddress ? (
+              <p className="mt-3 font-ui-label text-xs text-[color:var(--gold-1)]/80">
+                Sign in to claim your $0.10.{" "}
+                <Link href="/" className="underline">
+                  Go home
+                </Link>
+              </p>
+            ) : status?.claimed ? (
+              <button
+                disabled
+                className="mt-3 w-full cursor-not-allowed rounded-xl border border-[color:var(--border)] bg-black/40 px-6 py-3 font-ui-label text-sm text-[color:var(--text-mute)]"
+              >
+                Come back tomorrow
+              </button>
+            ) : (
+              <button
+                onClick={claim}
+                disabled={claiming || status == null}
+                className="lime-cta mt-3 w-full rounded-xl px-6 py-3 font-display text-xl tracking-tight disabled:opacity-50"
+              >
+                {claiming ? "Sending…" : "CLAIM $0.10 DAILY BONUS"}
+              </button>
+            )}
+            {result?.ok && result.explorerUrl && (
+              <p className="mt-2 font-ui-label text-[10px] text-[color:var(--lime)]">
+                Paid ${result.amount} ·{" "}
+                <a href={result.explorerUrl} target="_blank" rel="noreferrer" className="underline">
+                  view on Arc explorer
+                </a>
+              </p>
+            )}
+            {result?.error && (
+              <p className="mt-2 font-ui-label text-[10px] text-rose-300">{result.error}</p>
+            )}
           </div>
 
-          {/* Huge PLAY NOW */}
+          {/* PLAY NOW chunky lime CTA */}
           <Link
             href="/play?auto=1"
-            className="play-cta block w-full rounded-2xl px-10 py-10 text-center font-display text-6xl tracking-tight transition hover:scale-[1.01]"
+            className="lime-cta block w-full rounded-2xl px-10 py-8 text-center font-display text-5xl tracking-wide"
           >
             PLAY NOW
           </Link>
           <p className="text-center font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
-            Spot the bluff · Win up to 5× · One minute per round
+            One round · 60 seconds · 1% fee on payouts
           </p>
         </div>
 
@@ -146,6 +157,8 @@ export default function LobbyPage() {
         </aside>
       </div>
 
+      <ChestMascot />
+      <OracleMascot />
       <WinnersTicker />
     </main>
   )

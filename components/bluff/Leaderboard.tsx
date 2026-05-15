@@ -42,65 +42,65 @@ export default function Leaderboard() {
   const rows = tab === "streak" ? byStreak : byWinnings
 
   return (
-    <div className="bluff-card bluff-card-a">
-      <div className="bluff-card-inner">
-        <div className="flex items-center justify-between">
-          <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--cyan)]">
-            ◆ LEADERBOARD
-          </p>
-          <div className="flex rounded-md border border-[color:var(--border)] bg-black/30 p-0.5 text-[10px]">
-            <button
-              onClick={() => setTab("streak")}
-              className={`rounded px-2 py-1 font-ui-label tracking-wider transition ${
-                tab === "streak"
-                  ? "bg-[color:var(--amber)]/20 text-[color:var(--amber)]"
-                  : "text-[color:var(--text-mute)]"
-              }`}
-            >
-              Streak
-            </button>
-            <button
-              onClick={() => setTab("winnings")}
-              className={`rounded px-2 py-1 font-ui-label tracking-wider transition ${
-                tab === "winnings"
-                  ? "bg-[color:var(--magenta)]/20 text-[color:var(--magenta)]"
-                  : "text-[color:var(--text-mute)]"
-              }`}
-            >
-              Winnings
-            </button>
-          </div>
+    <div className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-5 backdrop-blur">
+      <div className="flex items-center justify-between">
+        <p className="font-display text-lg tracking-widest text-[color:var(--gold-1)]">
+          ◆ LEADERBOARD
+        </p>
+        <div className="flex rounded-full border border-[color:var(--border)] bg-black/30 p-0.5 text-[10px]">
+          <button
+            onClick={() => setTab("streak")}
+            className={`rounded-full px-3 py-1 font-ui-label tracking-widest transition ${
+              tab === "streak"
+                ? "bg-[color:var(--gold-2)]/25 text-[color:var(--gold-1)]"
+                : "text-[color:var(--text-mute)]"
+            }`}
+          >
+            Streak
+          </button>
+          <button
+            onClick={() => setTab("winnings")}
+            className={`rounded-full px-3 py-1 font-ui-label tracking-widest transition ${
+              tab === "winnings"
+                ? "bg-[color:var(--lime)]/25 text-[color:var(--lime)]"
+                : "text-[color:var(--text-mute)]"
+            }`}
+          >
+            Winnings
+          </button>
         </div>
-
-        {rows.length === 0 ? (
-          <p className="mt-4 text-center font-ui-label text-[10px] text-[color:var(--text-mute)]">
-            No games played yet — be the first.
-          </p>
-        ) : (
-          <ol className="mt-3 space-y-1">
-            {rows.map((r, i) => (
-              <li
-                key={r.walletAddress}
-                className="flex items-center justify-between rounded border border-[color:var(--border)] bg-black/30 px-3 py-2 font-mono text-xs"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="w-5 text-right text-[color:var(--text-mute)]">
-                    {i + 1}.
-                  </span>
-                  <span>{shortAddr(r.walletAddress)}</span>
-                </span>
-                {tab === "streak" ? (
-                  <span className="text-[color:var(--amber)]">🔥 {r.streak}</span>
-                ) : (
-                  <span className="text-[color:var(--green)]">
-                    ${r.totalWon.toFixed(2)}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
       </div>
+
+      {rows.length === 0 ? (
+        <p className="mt-4 text-center font-ui-label text-[10px] text-[color:var(--text-mute)]">
+          No games played yet — be the first.
+        </p>
+      ) : (
+        <ol className="mt-3 space-y-1.5">
+          {rows.map((r, i) => (
+            <li
+              key={r.walletAddress}
+              className="flex items-center justify-between rounded-lg border border-[color:var(--border)] bg-black/30 px-3 py-2 font-mono text-xs"
+            >
+              <span className="flex items-center gap-2">
+                <span className={`w-5 text-right font-display text-base ${
+                  i === 0 ? "text-[color:var(--gold-1)]" : i === 1 ? "text-[color:var(--text)]" : i === 2 ? "text-[color:var(--coin-1)]" : "text-[color:var(--text-mute)]"
+                }`}>
+                  {i + 1}
+                </span>
+                <span>{shortAddr(r.walletAddress)}</span>
+              </span>
+              {tab === "streak" ? (
+                <span className="text-[color:var(--gold-1)]">🔥 {r.streak}</span>
+              ) : (
+                <span className="text-[color:var(--lime)]">
+                  ${r.totalWon.toFixed(2)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   )
 }

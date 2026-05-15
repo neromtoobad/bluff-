@@ -24,16 +24,21 @@ export default function Reveal({
   const won = userPick != null && userPick === liar
   const noBet = userPick == null
   const payout = won ? userAmount * PAYOUT_MULT : 0
-  const liarAccent = liar === "A" ? "var(--amber)" : "var(--magenta)"
+  const liarAccent = liar === "A" ? "var(--gold-2)" : "var(--violet)"
 
   return (
-    <div className="bluff-card" style={{
-      background: `linear-gradient(160deg, var(--cyan) 0%, rgba(0,232,255,0.25) 55%, transparent 100%)`,
-      boxShadow: "0 0 0 1px rgba(0,232,255,0.25), 0 20px 70px -30px rgba(0,232,255,0.55)",
-    }}>
+    <div
+      className="bluff-card"
+      style={{
+        background:
+          "linear-gradient(160deg, var(--gold-1) 0%, var(--gold-2) 45%, rgba(255,183,0,0.2) 100%)",
+        boxShadow:
+          "0 0 0 1px rgba(255,225,90,0.4), 0 24px 70px -28px rgba(255,183,0,0.7)",
+      }}
+    >
       <div className="bluff-card-inner space-y-4">
-        <p className="font-display text-5xl tracking-tight text-cyan-glow">
-          LIAR REVEALED
+        <p className="jackpot-title font-display text-5xl tracking-tight">
+          LIAR REVEALED!
         </p>
         <p className="font-display text-3xl tracking-tight" style={{ color: liarAccent }}>
           AGENT {liar} WAS LYING
@@ -58,7 +63,7 @@ export default function Reveal({
                 href={source}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono text-xs text-[color:var(--cyan)] hover:underline"
+                className="font-mono text-xs text-[color:var(--lime)] hover:underline"
               >
                 {source}
               </a>
@@ -69,8 +74,8 @@ export default function Reveal({
         )}
 
         {tell && (
-          <div className="rounded-lg border border-[color:var(--amber)]/40 bg-[color:var(--amber)]/10 p-3">
-            <p className="font-ui-label text-[10px] uppercase tracking-widest text-[color:var(--amber)]">
+          <div className="rounded-lg border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 p-3">
+            <p className="font-ui-label text-[10px] uppercase tracking-widest text-[color:var(--lime)]">
               💡 The tell
             </p>
             <p className="mt-1 font-mono text-sm leading-relaxed text-[color:var(--text)]">
@@ -84,7 +89,7 @@ export default function Reveal({
             <span className="text-[color:var(--text-mute)]">Position:</span>{" "}
             ${userAmount.toFixed(2)} on AGENT {userPick} ·{" "}
             {won ? (
-              <span className="text-[color:var(--green)]">
+              <span className="text-[color:var(--lime)]">
                 Payout ${payout.toFixed(2)} ({PAYOUT_MULT}× base)
               </span>
             ) : (
@@ -94,7 +99,7 @@ export default function Reveal({
         )}
 
         {nextInSeconds != null && nextInSeconds > 0 && (
-          <p className="text-center font-ui-label text-[11px] tracking-widest text-[color:var(--cyan)]">
+          <p className="text-center font-ui-label text-[12px] tracking-widest text-[color:var(--lime)]">
             NEXT ROUND IN {nextInSeconds}…
           </p>
         )}

@@ -10,9 +10,7 @@ type Stats = {
   streak: number
 }
 
-type Props = {
-  walletAddress: string | null
-}
+type Props = { walletAddress: string | null }
 
 export default function StatsCard({ walletAddress }: Props) {
   const [stats, setStats] = useState<Stats | null>(null)
@@ -38,59 +36,58 @@ export default function StatsCard({ walletAddress }: Props) {
     stats && stats.played > 0 ? Math.round(stats.winRate * 100) : 0
 
   return (
-    <div className="bluff-card bluff-card-b">
-      <div className="bluff-card-inner">
-        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--cyan)]">
-          ◆ YOUR STATS
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-          <Stat label="Balance" value={`$${balance}`} accent="amber" />
-          <Stat
-            label="Streak"
-            value={
-              stats && stats.streak > 0 ? `🔥 ${stats.streak}` : `${stats?.streak ?? 0}`
-            }
-            accent={
-              (stats?.streak ?? 0) >= 10
-                ? "rose"
-                : (stats?.streak ?? 0) >= 5
-                  ? "orange"
-                  : (stats?.streak ?? 0) >= 3
-                    ? "amber"
-                    : "muted"
-            }
-          />
-          <Stat label="Games" value={`${stats?.played ?? 0}`} accent="muted" />
-          <Stat
-            label="Total won"
-            value={`$${stats?.totalWon?.toFixed(2) ?? "0.00"}`}
-            accent="green"
-          />
-          <Stat label="Win rate" value={`${winRatePct}%`} accent="cyan" />
-          <Stat
-            label="Wallet"
-            value={
-              walletAddress
-                ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
-                : "—"
-            }
-            accent="muted"
-          />
-        </div>
+    <div className="rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-5 backdrop-blur"
+      style={{ boxShadow: "0 18px 60px -30px rgba(0,0,0,0.7)" }}
+    >
+      <p className="font-display text-lg tracking-widest text-[color:var(--lime)]">
+        ◆ YOUR STATS
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Stat label="Balance" value={`$${balance}`} accent="gold" />
+        <Stat
+          label="Streak"
+          value={
+            stats && stats.streak > 0 ? `🔥 ${stats.streak}` : `${stats?.streak ?? 0}`
+          }
+          accent={
+            (stats?.streak ?? 0) >= 10
+              ? "rose"
+              : (stats?.streak ?? 0) >= 5
+                ? "coin"
+                : (stats?.streak ?? 0) >= 3
+                  ? "gold"
+                  : "muted"
+          }
+        />
+        <Stat label="Games" value={`${stats?.played ?? 0}`} accent="muted" />
+        <Stat
+          label="Total won"
+          value={`$${stats?.totalWon?.toFixed(2) ?? "0.00"}`}
+          accent="lime"
+        />
+        <Stat label="Win rate" value={`${winRatePct}%`} accent="lime" />
+        <Stat
+          label="Wallet"
+          value={
+            walletAddress
+              ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
+              : "—"
+          }
+          accent="muted"
+        />
       </div>
     </div>
   )
 }
 
-type Accent = "amber" | "magenta" | "cyan" | "green" | "rose" | "orange" | "muted"
+type Accent = "gold" | "lime" | "coin" | "rose" | "violet" | "muted"
 
 const accentColor: Record<Accent, string> = {
-  amber: "text-[color:var(--amber)]",
-  magenta: "text-[color:var(--magenta)]",
-  cyan: "text-[color:var(--cyan)]",
-  green: "text-[color:var(--green)]",
+  gold: "text-[color:var(--gold-1)]",
+  lime: "text-[color:var(--lime)]",
+  coin: "text-[color:var(--coin-1)]",
   rose: "text-rose-300",
-  orange: "text-orange-300",
+  violet: "text-[color:var(--violet)]",
   muted: "text-[color:var(--text)]",
 }
 
@@ -104,7 +101,7 @@ function Stat({
   accent: Accent
 }) {
   return (
-    <div className="rounded-lg border border-[color:var(--border)] bg-black/30 p-3">
+    <div className="rounded-xl border border-[color:var(--border)] bg-black/30 p-3">
       <p className="font-ui-label text-[9px] tracking-widest text-[color:var(--text-mute)]">
         {label}
       </p>

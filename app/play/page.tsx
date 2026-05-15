@@ -8,6 +8,8 @@ import Reveal from "@/components/bluff/Reveal"
 import StreakBadge from "@/components/bluff/StreakBadge"
 import FullscreenFlash from "@/components/bluff/FullscreenFlash"
 import Confetti from "@/components/bluff/Confetti"
+import { ChestMascot, OracleMascot } from "@/components/bluff/Mascots"
+import Link from "next/link"
 import * as audio from "@/lib/audio"
 
 type Phase = "idle" | "loading" | "streaming" | "betting" | "revealed"
@@ -296,7 +298,9 @@ export default function PlayPage() {
   const secondsLeft = Math.max(0, Math.ceil((deadline - now) / 1000))
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 py-10">
+    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-6 pb-24 pt-6">
+      <div className="rays-bg" />
+      <div className="forest-ridge" />
       <FullscreenFlash
         show={flash != null}
         tone={flash?.tone ?? "win"}
@@ -306,18 +310,14 @@ export default function PlayPage() {
       />
       <Confetti show={confetti} />
 
-      <header className="flex items-center justify-between">
-        <h1 className="font-display text-5xl tracking-tight">
-          <span className="text-[color:var(--amber)]">B</span>
-          <span className="text-[color:var(--magenta)]">L</span>
-          <span className="text-[color:var(--cyan)]">U</span>
-          <span className="text-[color:var(--green)]">F</span>
-          <span className="text-[color:var(--amber)]">F</span>
-        </h1>
+      <header className="relative z-10 flex items-center justify-between">
+        <Link href="/lobby" className="font-display text-2xl tracking-widest text-[color:var(--gold-1)]">
+          BL<span className="text-[color:var(--lime)]">◯</span>FF
+        </Link>
         <div className="flex items-center gap-3">
           <StreakBadge streak={streak} />
           {(phase === "streaming" || phase === "betting") && (
-            <span className="rounded border border-[color:var(--border)] bg-black/40 px-3 py-1 font-mono text-sm text-white">
+            <span className="rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-display text-lg text-[color:var(--gold-1)]">
               {secondsLeft}s
             </span>
           )}
@@ -337,22 +337,22 @@ export default function PlayPage() {
               </a>
             </p>
           )}
-          <button onClick={startRound} className="play-cta rounded-2xl px-12 py-6 font-display text-4xl tracking-tight">
+          <button onClick={startRound} className="lime-cta rounded-2xl px-14 py-6 font-display text-4xl tracking-tight">
             DEAL ME IN
           </button>
         </div>
       )}
 
       {phase === "loading" && (
-        <div className="flex flex-1 items-center justify-center font-ui-label text-xs tracking-widest text-[color:var(--cyan)]">
+        <div className="flex flex-1 items-center justify-center font-ui-label text-xs tracking-widest text-[color:var(--gold-1)]">
           ◆ SHUFFLING THE DECK…
         </div>
       )}
 
       {phase !== "idle" && phase !== "loading" && (
         <>
-          <section className="rounded-2xl border border-[color:var(--border)] bg-black/30 p-4">
-            <p className="font-ui-label text-[10px] uppercase tracking-widest text-[color:var(--cyan)]">
+          <section className="relative z-10 rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-4 backdrop-blur">
+            <p className="font-ui-label text-[10px] uppercase tracking-widest text-[color:var(--lime)]">
               ◆ CLAIM UNDER DEBATE
             </p>
             <p className="mt-1 font-display text-2xl leading-snug">{topic}</p>
@@ -454,7 +454,7 @@ export default function PlayPage() {
               )}
               <button
                 onClick={playAgainNow}
-                className="play-cta self-center rounded-xl px-8 py-4 font-display text-2xl tracking-tight"
+                className="lime-cta self-center rounded-2xl px-10 py-4 font-display text-2xl tracking-tight"
               >
                 PLAY AGAIN
               </button>
@@ -462,6 +462,9 @@ export default function PlayPage() {
           )}
         </>
       )}
+
+      <ChestMascot />
+      <OracleMascot />
     </main>
   )
 }
