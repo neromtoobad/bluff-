@@ -79,11 +79,15 @@ export async function POST(req: Request) {
         body: JSON.stringify({ userId }),
       })
       if (!createRes.ok && createRes.status !== 409) {
+        const detail = await createRes.text()
+        console.error(
+          `[auth/init] POST /users failed status=${createRes.status} body=${detail}`,
+        )
         return NextResponse.json(
           {
             error: "Circle user create failed",
             status: createRes.status,
-            detail: await createRes.text(),
+            detail,
           },
           { status: 502 },
         )
@@ -98,11 +102,15 @@ export async function POST(req: Request) {
       body: JSON.stringify({ userId }),
     })
     if (!tokenRes.ok) {
+      const detail = await tokenRes.text()
+      console.error(
+        `[auth/init] POST /users/token failed status=${tokenRes.status} body=${detail}`,
+      )
       return NextResponse.json(
         {
           error: "Circle session token failed",
           status: tokenRes.status,
-          detail: await tokenRes.text(),
+          detail,
         },
         { status: 502 },
       )
@@ -131,11 +139,15 @@ export async function POST(req: Request) {
       }),
     })
     if (!initRes.ok) {
+      const detail = await initRes.text()
+      console.error(
+        `[auth/init] POST /user/initialize failed status=${initRes.status} body=${detail}`,
+      )
       return NextResponse.json(
         {
           error: "Circle initialize failed",
           status: initRes.status,
-          detail: await initRes.text(),
+          detail,
         },
         { status: 502 },
       )
@@ -157,6 +169,7 @@ export async function POST(req: Request) {
       appId: process.env.NEXT_PUBLIC_CIRCLE_APP_ID,
     })
   } catch (err: any) {
+    console.error("[auth/init] unhandled error:", err?.stack ?? err?.message ?? err)
     return NextResponse.json({ error: err?.message ?? "unknown" }, { status: 500 })
   }
 }

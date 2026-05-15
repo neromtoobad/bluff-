@@ -77,11 +77,15 @@ export async function POST(req: Request) {
       },
     )
     if (!listRes.ok) {
+      const detail = await listRes.text()
+      console.error(
+        `[auth/verify] GET /wallets failed status=${listRes.status} body=${detail}`,
+      )
       return NextResponse.json(
         {
           error: "Circle wallets list failed",
           status: listRes.status,
-          detail: await listRes.text(),
+          detail,
         },
         { status: 502 },
       )
@@ -105,6 +109,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ walletAddress: address })
   } catch (err: any) {
+    console.error("[auth/verify] unhandled error:", err?.stack ?? err?.message ?? err)
     return NextResponse.json({ error: err?.message ?? "unknown" }, { status: 500 })
   }
 }

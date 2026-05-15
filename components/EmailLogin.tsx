@@ -1,215 +1,218 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import WalletBadge from "./WalletBadge"
 
-type Step = "email" | "otp" | "provisioning" | "done"
+// Three explicit states the user sees in order.
+type Status =
+  | { kind: "idle" }
+  | { kind: "sending" } //         "Sending code…"
+  | { kind: "provisioning" } //    "Setting up your wallet…"
+  | { kind: "ready"; address: string } // "Wallet ready ✓"
+  | { kind: "error"; message: string }
 
 type Props = {
   onWallet?: (address: string) => void
+  /** Where to redirect on success. Defaults to /lobby. Pass null to stay. */
+  redirectTo?: string | null
 }
 
-export default function EmailLogin({ onWallet }: Props = {}) {
-  const [step, setStep] = useState<Step>("email")
-  const [email, setEmail] = useState("")
-  const [otp, setOtp] = useState("")
-  const [userId, setUserId] = useState<string | null>(null)
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [hint, setHint] = useState<string | null>(null)
+const APP_ID = process.env.NEXT_PUBLIC_CIRCLE_APP_ID ?? ""
 
-  async function handleEmailSubmit(e: React.FormEvent) {
+export default function EmailLogin({ onWallet, redirectTo = "/lobby" }: Props = {}) {
+  const [email, setEmail] = useState("")
+  const [status, setStatus] = useState<Status>({ kind: "idle" })
+  const sdkRef = useRef<any>(null)
+  const sdkReadyRef = useRef(false)
+
+  // Initialize the Circle Web SDK once on mount and grab a device id.
+  // Per Circle's user-controlled wallets skill: "You must call
+  // sdk.getDeviceId() after SDK initialization … without this call,
+  // sdk.execute() will silently fail."
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const mod = await import("@circle-fin/w3s-pw-web-sdk")
+        const W3SSdk: any = (mod as any).W3SSdk ?? (mod as any).default
+        if (!APP_ID) {
+          console.error("[email-login] NEXT_PUBLIC_CIRCLE_APP_ID is not set")
+        }
+        const sdk = new W3SSdk({ appSettings: { appId: APP_ID } })
+
+        // Cache the device id so we don't re-establish the iframe session
+        // on every mount. Circle docs use localStorage here.
+        let deviceId = ""
+        try {
+          deviceId = localStorage.getItem("circle:deviceId") ?? ""
+        } catch {}
+        if (!deviceId) {
+          deviceId = await sdk.getDeviceId()
+          try {
+            localStorage.setItem("circle:deviceId", deviceId)
+          } catch {}
+        }
+
+        if (cancelled) return
+        sdkRef.current = sdk
+        sdkReadyRef.current = true
+      } catch (err: any) {
+        console.error("[email-login] SDK init failed:", err?.message ?? err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
+    if (status.kind === "sending" || status.kind === "provisioning") return
+
+    setStatus({ kind: "sending" })
+
+    let initJson: {
+      userId?: string
+      userToken?: string
+      encryptionKey?: string
+      challengeId?: string
+      appId?: string
+      error?: string
+    }
     try {
       const res = await fetch("/api/auth/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "failed to send OTP")
-      setUserId(json.userId)
-      setHint(json.hint ?? null)
-
-      // ---------- REAL CIRCLE PATH ----------
-      // If the server returned a userToken + challengeId, we're in the
-      // real Web SDK flow. Drive PIN setup through W3SSdk, then ask the
-      // server for the provisioned wallet address.
-      if (json.userToken && json.encryptionKey && json.challengeId) {
-        setStep("provisioning")
-        try {
-          const mod = await import("@circle-fin/w3s-pw-web-sdk")
-          const W3SSdk: any = (mod as any).W3SSdk ?? (mod as any).default
-          const sdk = new W3SSdk({
-            appSettings: {
-              appId:
-                json.appId ?? process.env.NEXT_PUBLIC_CIRCLE_APP_ID ?? "",
-            },
-          })
-          sdk.setAuthentication({
-            userToken: json.userToken,
-            encryptionKey: json.encryptionKey,
-          })
-          await new Promise<void>((resolve, reject) => {
-            sdk.execute(json.challengeId, (err: any, result: any) => {
-              if (err) reject(new Error(err?.message ?? "Circle SDK error"))
-              else if (
-                result?.status === "COMPLETE" ||
-                result?.status === "Completed" ||
-                result?.status === "IN_PROGRESS"
-              ) {
-                resolve()
-              } else {
-                reject(new Error(`Circle SDK status: ${result?.status}`))
-              }
-            })
-          })
-          // Wallet is provisioned — ask the server for the address.
-          const v = await fetch("/api/auth/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: json.userId }),
-          })
-          const vJson = await v.json()
-          if (!v.ok) throw new Error(vJson.error ?? "failed to fetch wallet")
-          setWalletAddress(vJson.walletAddress)
-          setStep("done")
-          onWallet?.(vJson.walletAddress)
-        } catch (sdkErr: any) {
-          setStep("email")
-          throw sdkErr
-        }
-        return
+      initJson = await res.json()
+      if (!res.ok) {
+        throw new Error(initJson.error ?? "failed to start sign-up")
       }
-
-      // ---------- MOCK / OTP PATH ----------
-      setStep("otp")
     } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      setStatus({ kind: "error", message: err?.message ?? "sign-up failed" })
+      return
     }
-  }
 
-  async function handleOtpSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!userId) return
-    setError(null)
-    setLoading(true)
+    const { userId, userToken, encryptionKey, challengeId } = initJson
+    if (!userId || !userToken || !encryptionKey || !challengeId) {
+      setStatus({
+        kind: "error",
+        message: "Circle did not return a challenge — check server logs",
+      })
+      return
+    }
+
+    // Hand off to Circle's hosted PIN UI.
+    setStatus({ kind: "provisioning" })
+    const sdk = sdkRef.current
+    if (!sdk || !sdkReadyRef.current) {
+      setStatus({ kind: "error", message: "Wallet SDK not ready, try again" })
+      return
+    }
+
     try {
-      const res = await fetch("/api/auth/verify", {
+      sdk.setAuthentication({ userToken, encryptionKey })
+      await new Promise<void>((resolve, reject) => {
+        sdk.execute(challengeId, (err: any, result: any) => {
+          if (err) {
+            reject(new Error(err?.message ?? "Circle PIN flow failed"))
+            return
+          }
+          const s = (result?.status ?? "").toUpperCase()
+          if (s === "COMPLETE" || s === "COMPLETED" || s === "IN_PROGRESS") {
+            resolve()
+          } else {
+            reject(new Error(`Circle PIN flow status: ${result?.status ?? "?"}`))
+          }
+        })
+      })
+
+      // Wallet is provisioned — read the Arc address back from Circle.
+      const v = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, otp }),
+        body: JSON.stringify({ userId }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "failed to verify OTP")
-      setWalletAddress(json.walletAddress)
-      setStep("done")
-      onWallet?.(json.walletAddress)
+      const vJson = await v.json()
+      if (!v.ok) throw new Error(vJson.error ?? "failed to fetch wallet")
+      const address: string = vJson.walletAddress
+      if (!address) throw new Error("wallet address missing from /verify")
+
+      // Persist for ConnectButton / WalletBadge / StatsCard / play-page bet flow.
+      try {
+        sessionStorage.setItem("arc:walletAddress", address)
+        sessionStorage.setItem("arc:walletMode", "browser")
+        sessionStorage.setItem("arc:chainId", "5042002")
+      } catch {}
+
+      setStatus({ kind: "ready", address })
+      onWallet?.(address)
+
+      if (redirectTo) {
+        // Tiny delay so the user sees the "Wallet ready ✓" state before nav.
+        setTimeout(() => {
+          window.location.href = redirectTo
+        }, 800)
+      }
     } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      setStatus({ kind: "error", message: err?.message ?? "PIN flow failed" })
     }
   }
 
-  if (step === "done" && walletAddress) {
+  if (status.kind === "ready") {
     return (
       <div className="flex flex-col items-center gap-3">
-        <p className="text-sm text-zinc-400">Smart wallet ready</p>
-        <WalletBadge address={walletAddress} />
+        <p className="font-ui-label text-[11px] tracking-widest text-[color:var(--lime)]">
+          ◆ WALLET READY ✓
+        </p>
+        <WalletBadge address={status.address} />
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-xl">
-      <h2 className="text-lg font-semibold mb-1">Sign in to bet</h2>
-      <p className="text-sm text-zinc-400 mb-5">
-        No seed phrase. No extension. Just email.
+    <div className="w-full max-w-sm rounded-2xl border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 p-6 shadow-xl backdrop-blur">
+      <p className="font-display text-2xl tracking-tight text-[color:var(--gold-1)]">
+        Sign in to play
+      </p>
+      <p className="mt-1 text-sm text-[color:var(--text-mute)]">
+        No seed phrase. Circle creates an Arc Testnet smart wallet for your email.
       </p>
 
-      {step === "email" && (
-        <form onSubmit={handleEmailSubmit} className="space-y-3">
-          <input
-            type="email"
-            required
-            autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
-          >
-            {loading ? "Sending…" : "Send code"}
-          </button>
-        </form>
+      <form onSubmit={handleSubmit} className="mt-5 space-y-3">
+        <input
+          type="email"
+          required
+          autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          disabled={status.kind === "sending" || status.kind === "provisioning"}
+          className="w-full rounded-lg border border-[color:var(--border)] bg-black/40 px-3 py-2 text-sm outline-none focus:border-[color:var(--lime)] disabled:opacity-60"
+        />
+        <button
+          type="submit"
+          disabled={status.kind === "sending" || status.kind === "provisioning"}
+          className="lime-cta w-full rounded-xl px-3 py-3 font-display text-lg tracking-wide disabled:opacity-60"
+        >
+          {status.kind === "sending"
+            ? "Sending code…"
+            : status.kind === "provisioning"
+              ? "Setting up your wallet…"
+              : "Create wallet"}
+        </button>
+      </form>
+
+      {status.kind === "provisioning" && (
+        <p className="mt-3 text-xs text-[color:var(--text-mute)]">
+          Follow the prompts in Circle's PIN-setup window.
+        </p>
       )}
 
-      {step === "provisioning" && (
-        <div className="rounded-md border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-3 py-4 text-center">
-          <p className="text-xs uppercase tracking-widest text-[color:var(--accent)] font-semibold">
-            Provisioning wallet…
-          </p>
-          <p className="mt-1 text-xs text-zinc-300">
-            Circle is setting up your smart wallet. Follow the prompts in the
-            popup.
-          </p>
-        </div>
-      )}
-
-      {step === "otp" && (
-        <form onSubmit={handleOtpSubmit} className="space-y-3">
-          <p className="text-xs text-zinc-400">
-            Code sent to <span className="text-zinc-200">{email}</span>
-          </p>
-          {hint && (
-            <p className="rounded-md border border-amber-700/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              Demo mode — {hint}
-            </p>
-          )}
-          <input
-            type="text"
-            required
-            autoFocus
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            placeholder="6-digit code"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm tracking-widest font-mono outline-none focus:border-emerald-500"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
-          >
-            {loading ? "Verifying…" : "Verify & create wallet"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setStep("email")
-              setOtp("")
-            }}
-            className="w-full text-xs text-zinc-400 hover:text-zinc-200"
-          >
-            Use a different email
-          </button>
-        </form>
-      )}
-
-      {error && (
-        <p className="mt-3 text-sm text-rose-400" role="alert">
-          {error}
+      {status.kind === "error" && (
+        <p className="mt-3 text-xs text-rose-300" role="alert">
+          {status.message}
         </p>
       )}
     </div>
