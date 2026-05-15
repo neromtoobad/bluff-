@@ -22,6 +22,8 @@ export type SettleReceipt = {
 export type Round = {
   id: string
   topic: string
+  topicSource?: "twitter" | "trends" | "pool"
+  topicUrl?: string
   liar: Side
   truth: string
   source: string

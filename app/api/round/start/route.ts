@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
-import { randomTopic } from "@/lib/topics"
+import { getRoundTopic } from "@/lib/topics"
 import { saveRound, type Side } from "@/lib/bluff-state"
 import {
   fetchTruth,
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic"
 const ROUND_DURATION_MS = 60_000
 
 export async function POST() {
-  const topic = randomTopic()
+  const { topic, source: topicSource, url: topicUrl } = await getRoundTopic()
   const liar: Side = Math.random() < 0.5 ? "A" : "B"
 
   const { truth, source } = await fetchTruth(topic)
@@ -34,6 +34,8 @@ export async function POST() {
   saveRound({
     id,
     topic,
+    topicSource,
+    topicUrl,
     liar,
     truth,
     source,
@@ -49,6 +51,8 @@ export async function POST() {
   return NextResponse.json({
     roundId: id,
     topic,
+    topicSource,
+    topicUrl,
     liarRevealedAt: bettingDeadline,
   })
 }

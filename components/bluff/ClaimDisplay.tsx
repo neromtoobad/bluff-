@@ -3,17 +3,29 @@
 type Props = {
   text: string
   active: boolean
+  agent: "A" | "B"
 }
 
-export default function ClaimDisplay({ text, active }: Props) {
+export default function ClaimDisplay({ text, active, agent }: Props) {
+  const color = agent === "A" ? "var(--gold-2)" : "var(--violet)"
   return (
-    <div
-      className={`min-h-[140px] rounded-md border border-[color:var(--border-soft)] bg-black/30 p-3 font-mono text-sm leading-relaxed text-[color:var(--text)] ${
-        active ? "shadow-[0_0_20px_rgba(255,255,255,0.05)]" : ""
-      }`}
-    >
-      {text || <span className="text-[color:var(--text-mute)]">…</span>}
-      {active && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-white/70 align-middle" />}
+    <div className="mx-auto flex w-full max-w-[300px] flex-col items-center gap-1 text-center">
+      <span
+        aria-hidden
+        className="font-display text-6xl leading-none"
+        style={{ color, textShadow: `0 0 24px ${agent === "A" ? "rgba(255,183,0,0.45)" : "rgba(122,92,255,0.45)"}` }}
+      >
+        “
+      </span>
+      <p
+        className="font-mono text-xl text-[color:var(--text)]"
+        style={{ lineHeight: 1.6 }}
+      >
+        {text || <span className="text-[color:var(--text-mute)]">…</span>}
+        {active && (
+          <span className="ml-0.5 inline-block h-5 w-1.5 animate-pulse bg-white/70 align-middle" />
+        )}
+      </p>
     </div>
   )
 }

@@ -42,7 +42,9 @@ export async function POST(req: Request) {
   const receipts: SettleReceipt[] = []
 
   for (const bet of round.bets) {
-    const won = bet.pick === round.liar
+    // bet.pick is now the agent the user thinks is TELLING THE TRUTH.
+    // They win iff they did NOT pick the liar.
+    const won = bet.pick !== round.liar
     const streakAfter = applyResult(bet.walletAddress, won)
 
     if (!won) {

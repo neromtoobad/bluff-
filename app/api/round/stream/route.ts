@@ -4,7 +4,7 @@ import { getRound } from "@/lib/bluff-state"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const TOKEN_MS = 35
+const TOKEN_MS = 80
 
 function tokenize(text: string): string[] {
   // Word + trailing whitespace as one "token" — feels natural when streamed.

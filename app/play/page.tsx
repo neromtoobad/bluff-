@@ -58,6 +58,7 @@ export default function PlayPage() {
   >(null)
   const [confetti, setConfetti] = useState(false)
   const [nextIn, setNextIn] = useState<number | null>(null)
+  const [topicUrl, setTopicUrl] = useState<string | null>(null)
   const roundIdRef = useRef<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
   const autoStartedRef = useRef(false)
@@ -130,8 +131,9 @@ export default function PlayPage() {
             try { audio.roundEnd() } catch {}
           }
         } else if (currentBet) {
-          // No wallet — local outcome.
-          const won = currentBet.pick === liar
+          // No wallet — local outcome. User picks the TRUTH-teller now,
+          // so they win iff they did NOT pick the liar.
+          const won = currentBet.pick !== liar
           if (won) {
             setStreak((s) => s + 1)
             setConfetti(true)
@@ -169,9 +171,10 @@ export default function PlayPage() {
       setPhase("idle")
       return
     }
-    const { roundId, topic: t, liarRevealedAt } = await res.json()
+    const { roundId, topic: t, topicUrl: tu, liarRevealedAt } = await res.json()
     roundIdRef.current = roundId
     setTopic(t)
+    setTopicUrl(tu ?? null)
     setDeadline(liarRevealedAt)
     setPhase("streaming")
 
@@ -371,7 +374,7 @@ export default function PlayPage() {
                   : null
               }
             >
-              <ClaimDisplay text={claimA} active={speaking === "A"} />
+              <ClaimDisplay text={claimA} active={speaking === "A"} agent="A" />
             </AgentCard>
             <AgentCard
               agent="B"
@@ -385,7 +388,7 @@ export default function PlayPage() {
                   : null
               }
             >
-              <ClaimDisplay text={claimB} active={speaking === "B"} />
+              <ClaimDisplay text={claimB} active={speaking === "B"} agent="B" />
             </AgentCard>
           </section>
 
@@ -434,10 +437,12 @@ export default function PlayPage() {
                 liar={reveal.liar}
                 truth={reveal.truth}
                 source={reveal.source}
+                topicUrl={topicUrl}
                 userPick={bet?.pick ?? null}
                 userAmount={bet?.amount ?? 0}
                 tell={tell}
                 nextInSeconds={nextIn}
+                onNext={playAgainNow}
               />
               {settleReceipt?.won && settleReceipt.explorerUrl && (
                 <p className="text-center font-ui-label text-[10px] text-[color:var(--green)]">
@@ -452,12 +457,6 @@ export default function PlayPage() {
                   </a>
                 </p>
               )}
-              <button
-                onClick={playAgainNow}
-                className="lime-cta self-center rounded-2xl px-10 py-4 font-display text-2xl tracking-tight"
-              >
-                PLAY AGAIN
-              </button>
             </>
           )}
         </>

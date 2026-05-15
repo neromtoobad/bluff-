@@ -113,23 +113,41 @@ export async function generateLiarClaim(
 function claimPrompt(topic: string, truth: string, isTruth: boolean): string {
   if (isTruth) {
     return [
-      `You are a confident analyst. Topic: "${topic}".`,
-      `Verified truth: ${truth}`,
+      `You are a confident crypto degen telling the truth.`,
+      `The claim is: "${topic}".`,
+      `The verified truth is: ${truth}`,
       ``,
-      `Write a 3-sentence claim defending the TRUE position with specific numbers from the verified truth.`,
-      `Sound certain. Use real figures. No hedging words ("might", "could").`,
-      `Do not introduce yourself. Do not say "the truth is". Just speak.`,
+      `State the truth in ONE line, MAX 25 words. Drop the actual number or fact.`,
+      `End with a vulgar-but-clever crypto-twitter line swearing you're right.`,
+      `Use the energy of: "anon trust me", "fr fr", "deadass true", "ngmi if you cope",`,
+      `"actual researcher here, not some VC shill", "i swear i'm not lying".`,
+      ``,
+      `Hard rules:`,
+      `- Do NOT use "actually", "honestly", "by my read", "look at the data".`,
+      `- Sound like crypto Twitter, not ChatGPT. No academic tone.`,
+      `- Be cocky. No hedging ("might", "could", "probably").`,
+      `- Do not introduce yourself. Just speak.`,
+      `- Lowercase is fine, sentence-case is fine, just don't be formal.`,
     ].join("\n")
   }
   return [
-    `You are a confident analyst making a FALSE but plausible claim. Topic: "${topic}".`,
-    `Real verified truth (do NOT repeat this — invent a believable lie):`,
-    `${truth}`,
+    `You are a confident crypto degen lying through your teeth.`,
+    `The claim is: "${topic}".`,
+    `The actual verified truth is: ${truth}`,
     ``,
-    `Write a 3-sentence claim that contradicts the real truth, using fabricated but believable numbers.`,
-    `Sound just as certain as if you were right. Do not hedge.`,
-    `Stay close to plausibility — wrong by a factor of 2-10x, not 1000x. Do not be obviously absurd.`,
-    `Do not introduce yourself. Do not admit you are lying. Just speak.`,
+    `You must argue a believable LIE — invent a fake-but-specific number close to the real one.`,
+    `Wrong by ~2-5×, never 1000×. Don't be obviously absurd.`,
+    ``,
+    `State the lie in ONE line, MAX 25 words. Sell it hard.`,
+    `End with a vulgar-but-clever crypto-twitter line swearing you're right.`,
+    `Use the energy of: "anyone saying otherwise is coping", "bro pulled that from his ass",`,
+    `"i swear i'm not lying", "ngmi if you believe the headlines", "deadass".`,
+    ``,
+    `Hard rules:`,
+    `- Do NOT use "actually", "honestly", "by my read", "look at the data".`,
+    `- Sound like crypto Twitter, not ChatGPT. No academic tone.`,
+    `- Be cocky. No hedging.`,
+    `- Do not introduce yourself. Do not admit you are lying. Just speak.`,
   ].join("\n")
 }
 
@@ -164,9 +182,9 @@ export async function generateTell(
             `Truthful claim (from the truth-teller): "${truthClaim}"`,
             `False claim (from the liar): "${liarClaim}"`,
             ``,
-            `In ONE sentence (max 22 words), explain the tell that gave the liar away.`,
-            `Be concrete: vague numbers, dodged specifics, suspicious round figures, hedging language, etc.`,
-            `Start with the tell, no preamble. Do not name the agent letter.`,
+            `In ONE sentence (max 22 words), call out the tell that gave the liar away.`,
+            `Be concrete: vague numbers, suspiciously round figures, ducked specifics, hedge words.`,
+            `Crypto-twitter voice. No "actually" or "honestly". Don't name the agent letter.`,
           ].join("\n"),
         },
       ],
@@ -179,12 +197,12 @@ export async function generateTell(
 }
 
 function fallbackTell(_liarSide: "A" | "B"): string {
-  return "The liar leaned on round numbers and avoided specifics — confident speakers usually cite the exact figure."
+  return "tell was the vibe — the liar gave you a clean round number with zero source. real degens cite the receipts."
 }
 
-function fallbackClaim(topic: string, truth: string, isTruth: boolean): string {
+function fallbackClaim(_topic: string, _truth: string, isTruth: boolean): string {
   if (isTruth) {
-    return `Look at the data on "${topic}". ${truth} The numbers are what they are — argue with the source, not me.`
+    return `yeah no this is locked in. number's right where the receipts show. saylor literally tweeted it last week. anon trust me.`
   }
-  return `The headlines on "${topic}" are wrong. By my read, the real figure is roughly half of what people quote, and the trend is reversing. Anyone running the numbers honestly sees this.`
+  return `lol no the real number is way smaller than people quote. headlines are cope, do your own research. i swear i'm not lying.`
 }

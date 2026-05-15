@@ -26,7 +26,7 @@ export default function BetButtons({ enabled, onBet, placed }: Props) {
           ${placed.amount.toFixed(2)}{" "}
           <span className="text-[color:var(--text-mute)]">on</span>{" "}
           <span style={{ color: placed.pick === "A" ? "var(--gold-2)" : "var(--violet)" }}>
-            AGENT {placed.pick} IS LYING
+            AGENT {placed.pick} IS TELLING THE TRUTH
           </span>
         </p>
       </div>
@@ -87,7 +87,7 @@ export default function BetButtons({ enabled, onBet, placed }: Props) {
             <span className="font-display text-3xl text-[#3a1d00]">A</span>
           </span>
           <span className="font-display text-xl tracking-wide text-[color:var(--gold-1)]">
-            BET A IS LYING
+            BET A IS TELLING THE TRUTH
           </span>
         </button>
         <button
@@ -100,7 +100,7 @@ export default function BetButtons({ enabled, onBet, placed }: Props) {
             <span className="font-display text-3xl text-[#1a0d3a]">B</span>
           </span>
           <span className="font-display text-xl tracking-wide" style={{ color: "var(--violet)" }}>
-            BET B IS LYING
+            BET B IS TELLING THE TRUTH
           </span>
         </button>
       </div>
