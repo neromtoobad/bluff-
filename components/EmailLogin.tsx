@@ -146,13 +146,20 @@ export default function EmailLogin({ onWallet, redirectTo = "/lobby" }: Props = 
       const vJson = await v.json()
       if (!v.ok) throw new Error(vJson.error ?? "failed to fetch wallet")
       const address: string = vJson.walletAddress
+      const walletIdFromCircle: string | undefined = vJson.walletId
       if (!address) throw new Error("wallet address missing from /verify")
 
       // Persist for ConnectButton / WalletBadge / StatsCard / play-page bet flow.
+      // walletMode = "circle" so the bet path routes through the Circle
+      // transaction-challenge API instead of window.ethereum.
       try {
         sessionStorage.setItem("arc:walletAddress", address)
-        sessionStorage.setItem("arc:walletMode", "browser")
+        sessionStorage.setItem("arc:walletMode", "circle")
         sessionStorage.setItem("arc:chainId", "5042002")
+        sessionStorage.setItem("arc:circleUserId", userId)
+        if (walletIdFromCircle) {
+          sessionStorage.setItem("arc:circleWalletId", walletIdFromCircle)
+        }
       } catch {}
 
       setStatus({ kind: "ready", address })

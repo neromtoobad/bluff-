@@ -234,15 +234,172 @@ export default function PlayPage() {
       return
     }
 
-    if (!(window as any).ethereum) {
-      setBet({ pick, amount, error: "no wallet provider — install MetaMask" })
-      return
-    }
     const escrow = process.env.NEXT_PUBLIC_ARENA_ESCROW_ADDRESS as
       | string
       | undefined
     if (!escrow || !/^0x[a-fA-F0-9]{40}$/.test(escrow)) {
       setBet({ pick, amount, error: "escrow address not configured" })
+      return
+    }
+
+    const walletMode = (() => {
+      try { return sessionStorage.getItem("arc:walletMode") } catch { return null }
+    })()
+
+    // ── Circle SCA path ────────────────────────────────────────────────
+    // walletMode === "circle" → user signed up via email, key is held by
+    // Circle. Use the contract-execution challenge API instead of
+    // window.ethereum: backend creates challenge → SDK execute (PIN) →
+    // poll Circle for the on-chain tx hash → /api/round/bet verifies it.
+    if (walletMode === "circle") {
+      const userId = sessionStorage.getItem("arc:circleUserId") ?? ""
+      const walletId = sessionStorage.getItem("arc:circleWalletId") ?? ""
+      if (!userId || !walletId) {
+        setBet({
+          pick,
+          amount,
+          error: "Circle session missing — sign in again at /sign-in",
+        })
+        return
+      }
+      setBet({ pick, amount, pending: true })
+      try {
+        const amountStr = amount.toFixed(2)
+        const challengeRes = await fetch("/api/circle/bet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, walletId, escrow, amount: amountStr }),
+        })
+        const challengeJson = await challengeRes.json()
+        if (!challengeRes.ok) {
+          throw new Error(challengeJson?.error ?? "Circle bet challenge failed")
+        }
+        const { challengeId, transactionId } = challengeJson as {
+          challengeId: string
+          transactionId?: string
+        }
+
+        // Prompt PIN via the Circle Web SDK.
+        const mod = await import("@circle-fin/w3s-pw-web-sdk")
+        const W3SSdk: any = (mod as any).W3SSdk ?? (mod as any).default
+        const sdk = new W3SSdk({
+          appSettings: { appId: process.env.NEXT_PUBLIC_CIRCLE_APP_ID ?? "" },
+        })
+        // Re-issue a userToken so the SDK can auth this challenge. The
+        // server already refreshed/has one stashed for createContractExecution,
+        // so we just need the latest pair. Refresh by calling /api/auth/init
+        // with a sentinel — or simpler: ask /api/auth/verify (it doesn't
+        // expose tokens); instead, drive the SDK with the same token chain
+        // by re-fetching via /api/circle/bet response (it doesn't return
+        // userToken). Cleanest: piggyback on init's session — we kept the
+        // userToken server-side. So fetch a fresh /api/auth/init keyed by
+        // userId? We don't expose that. Best path: have the bet endpoint
+        // also return the userToken+encryptionKey so the SDK can authenticate.
+        // For now, fetch them via a session-refresh ping.
+        const ping = await fetch("/api/circle/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        })
+        const pingJson = await ping.json()
+        if (!ping.ok || !pingJson?.userToken || !pingJson?.encryptionKey) {
+          throw new Error("Circle session refresh failed")
+        }
+        try {
+          let deviceId = ""
+          try { deviceId = localStorage.getItem("circle:deviceId") ?? "" } catch {}
+          if (!deviceId) {
+            deviceId = await sdk.getDeviceId()
+            try { localStorage.setItem("circle:deviceId", deviceId) } catch {}
+          }
+        } catch {}
+        sdk.setAuthentication({
+          userToken: pingJson.userToken,
+          encryptionKey: pingJson.encryptionKey,
+        })
+
+        await new Promise<void>((resolve, reject) => {
+          sdk.execute(challengeId, (err: any, result: any) => {
+            if (err) {
+              reject(new Error(err?.message ?? "PIN approval failed"))
+              return
+            }
+            const s = (result?.status ?? "").toUpperCase()
+            if (s === "COMPLETE" || s === "COMPLETED" || s === "IN_PROGRESS") {
+              resolve()
+            } else {
+              reject(new Error(`Circle execute status: ${result?.status ?? "?"}`))
+            }
+          })
+        })
+
+        // Poll Circle until the tx is SENT (txHash assigned) or terminal.
+        const txId = transactionId
+        if (!txId) {
+          throw new Error("Circle did not return a transactionId")
+        }
+        const chains = await import("@/lib/chains")
+        const { arcExplorerTx } = chains
+        const deadline = Date.now() + 90_000
+        let txHash: string | null = null
+        while (Date.now() < deadline) {
+          const tr = await fetch(
+            `/api/circle/tx?userId=${encodeURIComponent(userId)}&id=${encodeURIComponent(txId)}`,
+          )
+          const trJson = await tr.json()
+          const state = String(trJson?.state ?? "").toUpperCase()
+          if (trJson?.txHash) {
+            txHash = trJson.txHash
+            if (state === "CONFIRMED" || state === "COMPLETE") break
+            // SENT — txHash is set, on-chain receipt may not be final yet.
+            // /api/round/bet's verifyUSDCTransfer will waitForTransactionReceipt.
+            break
+          }
+          if (state === "FAILED" || state === "DENIED" || state === "CANCELLED") {
+            throw new Error(`Circle tx ${state.toLowerCase()}`)
+          }
+          await new Promise((r) => setTimeout(r, 1500))
+        }
+        if (!txHash) throw new Error("Circle tx timed out without a txHash")
+
+        setBet({
+          pick,
+          amount,
+          pending: true,
+          txHash,
+          explorerUrl: arcExplorerTx(txHash),
+        })
+
+        const res = await fetch("/api/round/bet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roundId,
+            walletAddress,
+            pick,
+            amount: amountStr,
+            txHash,
+            explorerUrl: arcExplorerTx(txHash),
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error ?? "bet rejected")
+        setBet({
+          pick,
+          amount,
+          txHash: json.bet?.txHash ?? txHash,
+          explorerUrl: json.bet?.explorerUrl ?? arcExplorerTx(txHash),
+        })
+      } catch (err: any) {
+        const msg = err?.shortMessage ?? err?.message ?? "bet failed"
+        setBet({ pick, amount, error: msg })
+      }
+      return
+    }
+
+    // ── Browser-EOA path (MetaMask et al.) ────────────────────────────
+    if (!(window as any).ethereum) {
+      setBet({ pick, amount, error: "no wallet provider — install MetaMask" })
       return
     }
 

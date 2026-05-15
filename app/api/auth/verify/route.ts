@@ -90,13 +90,19 @@ export async function POST(req: Request) {
       )
     }
     const json = (await listRes.json()) as {
-      data?: { wallets?: Array<{ address?: string; blockchain?: string }> }
+      data?: {
+        wallets?: Array<{
+          id?: string
+          address?: string
+          blockchain?: string
+        }>
+      }
     }
     // Prefer an Arc testnet wallet; otherwise take the first one returned.
     const wallets = json?.data?.wallets ?? []
     const arcWallet = wallets.find((w) => w.blockchain === "ARC-TESTNET")
-    const address = arcWallet?.address ?? wallets[0]?.address
-    if (!address) {
+    const picked = arcWallet ?? wallets[0]
+    if (!picked?.address) {
       return NextResponse.json(
         {
           error:
@@ -106,7 +112,11 @@ export async function POST(req: Request) {
       )
     }
 
-    return NextResponse.json({ walletAddress: address })
+    return NextResponse.json({
+      walletAddress: picked.address,
+      walletId: picked.id,
+      blockchain: picked.blockchain,
+    })
   } catch (err: any) {
     console.error("[auth/verify] unhandled error:", err?.stack ?? err?.message ?? err)
     return NextResponse.json({ error: err?.message ?? "unknown" }, { status: 500 })
