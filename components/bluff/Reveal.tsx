@@ -122,7 +122,7 @@ export default function Reveal({
             onClick={onNext}
             className="lime-cta rounded-2xl px-8 py-3 font-display text-2xl tracking-tight"
           >
-            PLAY AGAIN
+            {won ? "NEXT" : "PLAY AGAIN"}
           </button>
         </div>
       </div>
