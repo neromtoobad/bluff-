@@ -2,6 +2,9 @@ import { recentFeed, subscribe } from "@/lib/feed"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+// SSE feed — heartbeat every 25s, no natural end. Cap at 5min so it
+// reopens periodically instead of hitting Vercel's lambda timeout mid-event.
+export const maxDuration = 300
 
 export async function GET() {
   const encoder = new TextEncoder()

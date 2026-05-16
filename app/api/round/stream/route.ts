@@ -3,6 +3,10 @@ import { getRound } from "@/lib/bluff-state"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+// SSE — needs to outlive Vercel's default 10s Hobby cap. 300s = 5min,
+// the Pro tier ceiling. Hobby will cap at 60s; that's still fine since
+// our longest possible wait is ROUND_DURATION_MS (60s).
+export const maxDuration = 300
 
 const TOKEN_MS = 80
 
