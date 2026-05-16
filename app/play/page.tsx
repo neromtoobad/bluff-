@@ -439,9 +439,17 @@ export default function PlayPage() {
       return
     }
 
-    // ── Browser-EOA path (MetaMask et al.) ────────────────────────────
-    if (!(window as any).ethereum) {
-      setBet({ pick, amount, error: "no wallet provider — install MetaMask" })
+    // ── Browser-EOA path (MetaMask / OKX / Rabby / Coinbase) ──────────
+    // OKX wallet injects under window.okxwallet rather than window.ethereum;
+    // prefer it so users with OKX-only setups can sign.
+    const w = window as any
+    const eth = w.okxwallet ?? w.ethereum
+    if (!eth) {
+      setBet({
+        pick,
+        amount,
+        error: "no wallet provider — install MetaMask, OKX, or Rabby",
+      })
       return
     }
 
@@ -453,13 +461,13 @@ export default function PlayPage() {
 
       // Ensure the wallet is on Arc Testnet before signing.
       try {
-        await (window as any).ethereum.request({
+        await eth.request({
           method: "wallet_switchEthereumChain",
           params: [{ chainId: chains.ARC_CHAIN_ID_HEX }],
         })
       } catch (e: any) {
         if (e?.code === 4902) {
-          await (window as any).ethereum.request({
+          await eth.request({
             method: "wallet_addEthereumChain",
             params: [
               {
@@ -478,7 +486,7 @@ export default function PlayPage() {
 
       const walletClient = createWalletClient({
         chain: arcTestnet,
-        transport: custom((window as any).ethereum),
+        transport: custom(eth),
       })
       const publicClient = createPublicClient({
         chain: arcTestnet,

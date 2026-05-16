@@ -36,7 +36,8 @@ export default function ConnectButton({ className }: Props) {
   }, [])
 
   useEffect(() => {
-    const eth = (window as any).ethereum
+    const w = window as any
+    const eth = w.okxwallet ?? w.ethereum
     if (!eth || typeof eth.on !== "function") return
     const onAccountsChanged = (accounts: string[]) => {
       const next = accounts?.[0]
@@ -96,9 +97,13 @@ export default function ConnectButton({ className }: Props) {
 
   async function handleConnect() {
     setError(null)
-    const eth = (window as any).ethereum
+    // Wallets that don't squat on window.ethereum (e.g. OKX) inject under
+    // their own namespace. Prefer OKX if it's there; otherwise fall back
+    // to whatever the page's primary EIP-1193 provider is.
+    const w = window as any
+    const eth = w.okxwallet ?? w.ethereum
     if (!eth) {
-      setError("Install MetaMask or Rabby to connect")
+      setError("Install MetaMask, OKX, Rabby, or Coinbase Wallet to connect")
       setStatus("error")
       return
     }
