@@ -7,13 +7,13 @@ type Props = {
 }
 
 export default function ClaimDisplay({ text, active, agent }: Props) {
-  const color = agent === "A" ? "var(--gold-2)" : "var(--violet)"
+  const color = agent === "A" ? "var(--gold-2)" : "var(--arc-blue)"
   return (
     <div className="mx-auto flex w-full max-w-[300px] flex-col items-center gap-0.5 text-center">
       <span
         aria-hidden
         className="font-display text-3xl leading-none sm:text-4xl"
-        style={{ color, textShadow: `0 0 18px ${agent === "A" ? "rgba(255,183,0,0.45)" : "rgba(122,92,255,0.45)"}` }}
+        style={{ color, textShadow: `0 0 18px ${agent === "A" ? "rgba(255,183,0,0.45)" : "rgba(78,161,255,0.5)"}` }}
       >
         “
       </span>

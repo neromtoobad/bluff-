@@ -85,7 +85,7 @@ export default function AgentCard({
                   color: `var(${accentVar})`,
                   background: agent === "A"
                     ? "rgba(255,183,0,0.08)"
-                    : "rgba(122,92,255,0.08)",
+                    : "rgba(78,161,255,0.10)",
                 }}
               >
                 {hint}

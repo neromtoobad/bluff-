@@ -12,7 +12,9 @@
   --bg-card: #142a20;
   --bg-card-2: #1c3a2a;
   --border: #234034;
-  --border-soft: #2f5944;
+  /* Cards / sections borders — tinted slightly toward Arc-blue so the
+     forest-green base reads with a network/data feel instead of pure foliage. */
+  --border-soft: #2a4d5a;
   --text: #f6f3e6;
   --text-mute: #7d8a82;
 
@@ -51,9 +53,11 @@
   --bull: var(--gold-2);
   --bull-soft: rgba(255, 183, 0, 0.14);
   --bull-glow: var(--gold-glow);
-  --bear: var(--violet);
-  --bear-soft: rgba(122, 92, 255, 0.16);
-  --bear-glow: rgba(122, 92, 255, 0.55);
+  /* Agent B === Arc Network side. Recolored from violet to Arc-blue
+     so every play screen carries the Arc identity. */
+  --bear: var(--arc-blue);
+  --bear-soft: rgba(78, 161, 255, 0.16);
+  --bear-glow: rgba(78, 161, 255, 0.6);
 
   --accent: var(--lime);
   --accent-soft: rgba(124, 214, 36, 0.16);
@@ -387,10 +391,10 @@ body > * {
     0 20px 70px -30px rgba(255, 184, 0, 0.55);
 }
 .bluff-card-b {
-  background: linear-gradient(200deg, var(--magenta) 0%, rgba(255, 45, 167, 0.25) 55%, transparent 100%);
+  background: linear-gradient(200deg, var(--arc-blue) 0%, rgba(78, 161, 255, 0.25) 55%, transparent 100%);
   box-shadow:
-    0 0 0 1px rgba(255, 45, 167, 0.25),
-    0 20px 70px -30px rgba(255, 45, 167, 0.55);
+    0 0 0 1px rgba(78, 161, 255, 0.3),
+    0 20px 70px -30px rgba(78, 161, 255, 0.6);
 }
 .bluff-card-speaking-a {
   box-shadow:
@@ -400,9 +404,9 @@ body > * {
 }
 .bluff-card-speaking-b {
   box-shadow:
-    0 0 0 1px rgba(255, 45, 167, 0.55),
-    0 0 40px 0 rgba(255, 45, 167, 0.55),
-    0 20px 70px -30px rgba(255, 45, 167, 0.7);
+    0 0 0 1px rgba(78, 161, 255, 0.6),
+    0 0 40px 0 rgba(78, 161, 255, 0.55),
+    0 20px 70px -30px rgba(78, 161, 255, 0.7);
 }
 
 /* Hover float — only applied when the card is in selectable (betting) mode.
@@ -424,8 +428,8 @@ body > * {
     drop-shadow(0 0 48px rgba(255, 184, 0, 0.35));
 }
 .bluff-hover-b:hover {
-  filter: drop-shadow(0 12px 32px rgba(122, 92, 255, 0.45))
-    drop-shadow(0 0 48px rgba(122, 92, 255, 0.35));
+  filter: drop-shadow(0 12px 32px rgba(78, 161, 255, 0.5))
+    drop-shadow(0 0 48px rgba(78, 161, 255, 0.4));
 }
 
 /* Sheen sweep on hover — relies on the card-inner being positioned. */

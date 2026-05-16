@@ -12,11 +12,11 @@ const ITEMS: Array<{ q: string; a: string }> = [
   },
   {
     q: "How do the agents decide what to say?",
-    a: "We hit Anthropic Claude with the claim. Claude (with web search) returns a verified truth + a source URL. One agent gets prompted as the truth-teller; the other gets the same truth but is told to invent a believable lie. The randomness in temperature 0.95 keeps every round distinct.",
+    a: "Each entry in the pool is pre-verified: it carries a verdict (TRUE or FALSE), the actual fact, and a canonical source URL. The truth-teller is told to defend the verified fact in a one-line crypto-Twitter voice; the liar is told to invent a believable counter with a fake-but-specific number. Claude Haiku 4.5 generates both at temperature 0.95 so no two rounds sound alike.",
   },
   {
     q: "Where do the topics come from?",
-    a: "Three places, in order: live crypto Twitter via the AIsa API (when a factual tweet with numbers shows up), trending crypto hashtags, then a hardcoded pool of 60+ verifiable crypto claims grouped by category. The picker downweights the category we just used so consecutive rounds feel different.",
+    a: "A hand-curated pool of 341 claims grouped into 17 categories (bitcoin, ethereum, solana, layer2, defi, regulation, hacks, founders, arc, etc.). 161 are verified TRUE statements, 180 are deliberately FALSE — so the truth-teller's opener flips between 'Yes, it's the truth' and 'No, it's a lie' depending on which side of the pool the round lands on. A rolling cache prevents the same topic in 15 rounds, and category weighting avoids back-to-back repeats.",
   },
   {
     q: "What's the streak multiplier?",
@@ -24,27 +24,31 @@ const ITEMS: Array<{ q: string; a: string }> = [
   },
   {
     q: "What happens to my bet if I lose?",
-    a: "It stays in the escrow wallet — that's the pot for future winners. House fee is baked into the multiplier (winners get 1.9× back, not 2×, on the base tier).",
+    a: "It stays in the escrow wallet — that's the pot for future winners. The house fee is baked into the multiplier (winners get 1.9× back, not 2×, on the base tier).",
   },
   {
     q: "Why does Connect Wallet prompt me to add a network?",
-    a: "Arc Testnet isn't in MetaMask by default. The connect flow adds it for you (chain id 5042002, RPC rpc.testnet.arc.network) and switches you over. Approve both prompts in the wallet.",
+    a: "Arc Testnet isn't in your wallet by default. The connect flow adds it automatically (chain id 5042002, RPC rpc.testnet.arc.network, native token USDC) then switches you over. Works with MetaMask, OKX, Rabby, and Coinbase Wallet. Approve both prompts.",
+  },
+  {
+    q: "Can I sign in without a browser wallet?",
+    a: "Yes — pick EMAIL SIGN-UP on the home page. Circle's user-controlled wallets create a smart-contract account (SCA) on Arc Testnet for your email. You set a PIN once; future logins recognize you and skip straight to the wallet.",
   },
   {
     q: "What if Claude is down?",
-    a: "The app falls back to a pre-written set of 22 truth lines and 22 liar lines, each tagged with [FALLBACK] in the response so you can tell. The on-chain bet flow still works, but agents will sound canned until the API recovers.",
+    a: "Every pool entry carries its own verdict + truth + source, so rounds still run with correct answers even when Claude can't be reached — the agents fall back to a pre-written set of 22 truth lines and 22 liar lines tagged with [FALLBACK] in the text so you can tell.",
   },
   {
     q: "Can I see the truth source?",
-    a: "Yes. On the reveal screen there's an ◆ TRUTH SOURCE pill linking to the URL Claude cited (when web search returned one). If the claim came from a tweet, you'll also see an ◆ ORIGINAL CLAIM link.",
+    a: "Yes. The reveal screen shows an ◆ TRUTH SOURCE pill linking to the canonical URL for that claim (CoinGecko, Wikipedia, SEC.gov, official protocol docs, etc.) plus the winning agent's payout tx on Arc explorer.",
   },
   {
     q: "How fast does a round go?",
-    a: "Roughly: both claims stream word-by-word over ~20 seconds. As soon as you lock a bet, the countdown collapses and the reveal fires. If you don't bet, the round ends at the 60s mark.",
+    a: "Round prep takes ~2–4 seconds (Anthropic call). Both claims then stream word-by-word over ~10 seconds. The moment you lock a bet, the reveal fires immediately — no waiting for the full window. Total: well under a minute from tap to payout.",
   },
   {
     q: "How are payouts sent?",
-    a: "Server-side. After the reveal, the escrow wallet signs a USDC transfer to each winner via viem. You'll see the tx hash with an ↗ Arc explorer link on the reveal screen.",
+    a: "Server-side, via viem. The escrow wallet signs a USDC transfer to each winner on Arc Testnet. You'll see the tx hash with an ↗ Arc explorer link on the reveal screen seconds after you win.",
   },
 ]
 

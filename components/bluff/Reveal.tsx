@@ -29,7 +29,7 @@ export default function Reveal({
   const won = userPick != null && userPick === truthAgent
   const noBet = userPick == null
   const payout = won ? userAmount * PAYOUT_MULT : 0
-  const truthAccent = truthAgent === "A" ? "var(--gold-2)" : "var(--violet)"
+  const truthAccent = truthAgent === "A" ? "var(--gold-2)" : "var(--arc-blue)"
   const tweetUrl = topicUrl && topicUrl.startsWith("http") ? topicUrl : null
   const truthSourceUrl =
     source && source.startsWith("http") ? source : null
@@ -79,7 +79,7 @@ export default function Reveal({
             href={truthSourceUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-full border border-[color:var(--lime)]/50 bg-[color:var(--lime)]/10 px-3 py-1 text-[color:var(--lime)] hover:bg-[color:var(--lime)]/20"
+            className="rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 text-[color:var(--arc-blue)] hover:bg-[color:var(--arc-blue)]/20"
           >
             ◆ TRUTH SOURCE
           </a>

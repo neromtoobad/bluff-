@@ -9,22 +9,22 @@ const STEPS: Array<{ n: string; title: string; body: string }> = [
   {
     n: "01",
     title: "A claim drops.",
-    body: "Every round we pull a verifiable crypto claim — from the hardcoded 60-claim pool or live crypto Twitter via AIsa.",
+    body: "Every round we pull one verifiable crypto claim from a hand-curated pool of 341 — 161 statements that are true, 180 that are deliberately false. Each entry has a verdict, the actual fact, and a canonical source URL attached.",
   },
   {
     n: "02",
-    title: "Two AI degens argue.",
-    body: "Agent A and Agent B both make their case. One is telling the truth backed by web data, one is lying with a plausible-sounding fake number.",
+    title: "Two AI agents argue.",
+    body: "Agent A (gold) and Agent B (Arc-blue) both make a one-line case. Claude generates them with the verdict pre-known on the server — the truth-teller is told to defend the real fact, the liar is told to fabricate a believable counter with a fake-but-specific number. You only see the two claims, not which agent was assigned which role.",
   },
   {
     n: "03",
     title: "You pick the truth-teller.",
-    body: "Bet USDC on whichever agent you think is honest. Tap their card. Wallet signs the transfer to the on-chain escrow.",
+    body: "Pick the stake ($0.10–$5) then tap the agent card you think is honest. Your wallet (MetaMask / OKX / Rabby / Coinbase Wallet, or your Circle SCA from email sign-up) signs a USDC transfer to the on-chain escrow on Arc Testnet. The deal closes the instant the tx is confirmed.",
   },
   {
     n: "04",
     title: "Reveal + payout.",
-    body: "Claude flips the cards and shows the verified truth + source. If you picked right, the escrow auto-sends you the payout. If you picked wrong, the pot stays.",
+    body: "The card of the liar flips to expose them, the truth and source URL drop in, and the escrow auto-signs a USDC transfer back to you if you called it right. Streak multipliers stack: 1.9× base, 2.5× from 3-streak, 3× from 5, 5× at 10+. Miss it and the bet stays in the pot for the next winner.",
   },
 ]
 
@@ -33,6 +33,13 @@ const MULT: Array<{ band: string; mult: string; tone: string }> = [
   { band: "3–4 streak", mult: "2.5×", tone: "text-[color:var(--gold-1)]" },
   { band: "5–9 streak", mult: "3×", tone: "text-[color:var(--coin-1)]" },
   { band: "10+ streak", mult: "5×", tone: "text-rose-300" },
+]
+
+const STACK: Array<{ label: string; value: string; tone: string }> = [
+  { label: "Settlement chain", value: "Arc Testnet · 5042002", tone: "text-[color:var(--arc-blue)]" },
+  { label: "Bet token", value: "USDC (ERC-20)", tone: "text-[color:var(--gold-1)]" },
+  { label: "Agent model", value: "Claude Haiku 4.5", tone: "text-[color:var(--lime)]" },
+  { label: "Wallet options", value: "MetaMask, OKX, Rabby, Coinbase + Circle SCA via email", tone: "text-[color:var(--text)]" },
 ]
 
 export default function RulesPage() {
@@ -50,7 +57,8 @@ export default function RulesPage() {
           RULES
         </h1>
         <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] sm:text-[11px]">
-          One round · sixty seconds · two AI agents · one liar.
+          One round · ~30 seconds · two AI agents · one liar · real USDC on{" "}
+          <span className="text-[color:var(--arc-blue)]">Arc Testnet</span>.
         </p>
 
         <ol className="mt-8 space-y-4">
@@ -79,7 +87,7 @@ export default function RulesPage() {
             ◆ PAYOUT MULTIPLIERS
           </p>
           <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
-            Streak multiplies your bet on a correct call. Lose a round → streak resets to zero.
+            Streak multiplies your stake on a correct call. Lose a round → streak resets to zero.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
             {MULT.map((m) => (
@@ -92,6 +100,30 @@ export default function RulesPage() {
                 </p>
                 <p className={`mt-1 font-display text-3xl tracking-tight ${m.tone}`}>
                   {m.mult}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border-2 border-[color:var(--arc-blue)]/40 bg-[color:var(--arc-blue)]/5 p-5 backdrop-blur">
+          <p className="font-display text-2xl tracking-tight text-[color:var(--arc-blue)]">
+            ◆ THE STACK
+          </p>
+          <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
+            Everything that makes a round happen.
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {STACK.map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-[color:var(--border)] bg-black/30 p-3"
+              >
+                <p className="font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
+                  {s.label}
+                </p>
+                <p className={`mt-1 font-mono text-sm leading-snug ${s.tone}`}>
+                  {s.value}
                 </p>
               </div>
             ))}

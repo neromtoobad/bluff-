@@ -10,10 +10,10 @@ type Props = {
 
 const SIZE = 140
 
-const BULL_COLOR = 0xffb800 // amber
+const BULL_COLOR = 0xffb800 // amber — Agent A
 const BULL_HORN_COLOR = 0xfff0c0
-const BEAR_COLOR = 0xff2da7 // magenta
-const BEAR_INNER_EAR_COLOR = 0xff7fc8
+const BEAR_COLOR = 0x4ea1ff // Arc Network blue — Agent B
+const BEAR_INNER_EAR_COLOR = 0x9ac6ff
 
 export default function AgentVisualizer({ side, isSpeaking, intensity }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)

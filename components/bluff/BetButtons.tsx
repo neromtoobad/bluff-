@@ -23,7 +23,7 @@ export default function BetButtons({ enabled, amount, onAmountChange, placed }: 
         <p className="mt-2 font-display text-3xl text-[color:var(--gold-1)]">
           ${placed.amount.toFixed(2)}{" "}
           <span className="text-[color:var(--text-mute)]">on</span>{" "}
-          <span style={{ color: placed.pick === "A" ? "var(--gold-2)" : "var(--violet)" }}>
+          <span style={{ color: placed.pick === "A" ? "var(--gold-2)" : "var(--arc-blue)" }}>
             AGENT {placed.pick} IS TELLING THE TRUTH
           </span>
         </p>
