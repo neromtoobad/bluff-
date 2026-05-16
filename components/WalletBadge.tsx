@@ -72,8 +72,8 @@ export default function WalletBadge({ address, usdcBalance }: Props) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 px-3 py-1.5 text-[11px] backdrop-blur">
       <span
-        className="h-2 w-2 rounded-full bg-[color:var(--lime)]"
-        style={{ boxShadow: "0 0 8px rgba(124,214,36,0.8)" }}
+        className="h-2 w-2 rounded-full bg-[color:var(--arc-blue)]"
+        style={{ boxShadow: "0 0 8px rgba(78,161,255,0.85)" }}
         aria-label="Connected to Arc Testnet"
       />
       <span className="font-mono text-[color:var(--text)]">{truncate(address)}</span>
@@ -93,7 +93,7 @@ export default function WalletBadge({ address, usdcBalance }: Props) {
         href={arcExplorerAddress(address)}
         target="_blank"
         rel="noreferrer"
-        className="ml-1 font-ui-label text-[9px] tracking-widest text-[color:var(--text-mute)] hover:text-[color:var(--lime)]"
+        className="ml-1 font-ui-label text-[9px] tracking-widest text-[color:var(--text-mute)] hover:text-[color:var(--arc-blue)]"
       >
         ↗ ARC
       </a>

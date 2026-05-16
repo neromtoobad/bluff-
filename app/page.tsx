@@ -101,7 +101,7 @@ function Gate() {
       </div>
 
       <p className="mt-1 font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
-        Real USDC · Arc Testnet · no funds at risk
+        Real USDC · <span className="text-[color:var(--arc-blue)]">Arc Testnet</span> · no funds at risk
       </p>
     </section>
   )
@@ -131,7 +131,7 @@ function SignedInHero() {
         Spot the AI lie. Win up to 5× your bet.
       </p>
       <p className="font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] sm:text-[11px]">
-        Real USDC. On-chain on Arc Testnet.
+        Real USDC. On-chain on <span className="text-[color:var(--arc-blue)]">Arc Testnet</span>.
       </p>
 
       <div className="flex w-full max-w-sm flex-col items-stretch gap-3 px-4 sm:max-w-none sm:w-auto sm:items-center sm:px-0">

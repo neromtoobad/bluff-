@@ -35,6 +35,12 @@
   --violet: #7a5cff;
   --violet-deep: #4b3aa8;
 
+  /* Arc Network accents — used for "Live on Arc Testnet" indicators,
+     wallet network chips, and the powered-by tag so the brand link
+     reads visually instead of vibing purely green. */
+  --arc-blue: #4ea1ff;
+  --arc-deep: #0a1530;
+
   /* Legacy aliases — components written for amber/magenta/cyan/green still
      paint, just shifted into the new palette. */
   --amber: var(--gold-2);
@@ -97,6 +103,13 @@ body::before {
       ellipse at 50% 30%,
       rgba(255, 183, 0, 0.10) 0%,
       transparent 40%
+    ),
+    /* Arc-blue wash sweeping in from the upper-left — barely visible but
+       gives the page a network/data-feel that nods to Arc. */
+    radial-gradient(
+      ellipse at 10% 0%,
+      rgba(78, 161, 255, 0.10) 0%,
+      transparent 50%
     ),
     radial-gradient(
       ellipse at center,
@@ -446,19 +459,21 @@ body > * {
   animation: bluff-sheen 900ms ease-out;
 }
 
-/* Arc Testnet live indicator — pulsing green dot inside a pill */
+/* Arc Testnet live indicator — Arc-blue dot inside a pill, pulsing.
+   Color borrowed from Arc's brand so the network chip reads as Arc, not
+   as another lime CTA. */
 .arc-live-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--lime);
-  box-shadow: 0 0 0 0 var(--lime);
+  background: var(--arc-blue);
+  box-shadow: 0 0 0 0 var(--arc-blue);
   animation: arc-live-pulse 1.6s ease-out infinite;
 }
 @keyframes arc-live-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(124, 214, 36, 0.8); }
-  70%  { box-shadow: 0 0 0 8px rgba(124, 214, 36, 0);   }
-  100% { box-shadow: 0 0 0 0 rgba(124, 214, 36, 0);     }
+  0%   { box-shadow: 0 0 0 0 rgba(78, 161, 255, 0.85); }
+  70%  { box-shadow: 0 0 0 8px rgba(78, 161, 255, 0);   }
+  100% { box-shadow: 0 0 0 0 rgba(78, 161, 255, 0);     }
 }
 .arc-live-pill {
   backdrop-filter: blur(4px);
