@@ -131,5 +131,13 @@ export async function POST(req: Request) {
       txHash,
       explorerUrl,
     },
+    // Include reveal payload so the client can short-circuit the SSE wait
+    // and show the answer immediately. The roundToken/in-memory round is
+    // already authenticated; trust its liar/truth.
+    reveal: {
+      liar: round.liar,
+      truth: round.truth,
+      source: round.source,
+    },
   })
 }

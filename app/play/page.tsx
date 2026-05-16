@@ -60,6 +60,9 @@ export default function PlayPage() {
   const roundIdRef = useRef<string | null>(null)
   const roundTokenRef = useRef<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
+  // Lets placeBet trigger reveal as soon as /api/round/bet returns it,
+  // instead of waiting for the SSE stream's reveal event.
+  const revealHandlerRef = useRef<((data: RevealData) => void) | null>(null)
   const autoStartedRef = useRef(false)
 
   // Read ?auto=1 once on mount (client-only — avoids Suspense boundary).
@@ -221,17 +224,22 @@ export default function PlayPage() {
       setDeadline(d)
       setPhase("betting")
     })
-    es.addEventListener("reveal", (e) => {
-      const data = JSON.parse((e as MessageEvent).data) as RevealData
+    const fireReveal = (data: RevealData) => {
       setReveal(data)
       setPhase("revealed")
-      es.close()
+      esRef.current?.close()
+      esRef.current = null
       setTimeout(() => {
         setBet((current) => {
           settle(roundId, current, data.liar)
           return current
         })
       }, 50)
+    }
+    revealHandlerRef.current = fireReveal
+    es.addEventListener("reveal", (e) => {
+      const data = JSON.parse((e as MessageEvent).data) as RevealData
+      fireReveal(data)
     })
     es.onerror = () => es.close()
   }, [settle])
@@ -432,6 +440,10 @@ export default function PlayPage() {
           txHash: json.bet?.txHash ?? txHash,
           explorerUrl: json.bet?.explorerUrl ?? arcExplorerTx(txHash),
         })
+        // Skip the SSE wait — server returned the reveal payload.
+        if (json.reveal && revealHandlerRef.current) {
+          revealHandlerRef.current(json.reveal as RevealData)
+        }
       } catch (err: any) {
         const msg = err?.shortMessage ?? err?.message ?? "bet failed"
         setBet({ pick, amount, error: msg })
@@ -534,6 +546,9 @@ export default function PlayPage() {
         txHash: json.bet?.txHash ?? hash,
         explorerUrl: json.bet?.explorerUrl ?? arcExplorerTx(hash),
       })
+      if (json.reveal && revealHandlerRef.current) {
+        revealHandlerRef.current(json.reveal as RevealData)
+      }
     } catch (err: any) {
       const msg = err?.shortMessage ?? err?.message ?? "bet failed"
       const rejected =

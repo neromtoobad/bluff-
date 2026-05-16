@@ -1,11 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk"
 
-// Latest Claude family. Haiku 4.5 is fast enough for these short, voice-y
-// claim generations and finishes in ~1s vs Sonnet's 3-5s. We use it for
-// every Anthropic call now — fastest "shuffling the deck" wait we can hit
-// without restructuring (e.g. pre-warming the next round in the background).
+// Haiku for short claim generation (fast). Sonnet for truth lookup so we
+// can use the web_search tool — Haiku without search hallucinates on
+// post-cutoff topics and refuses on sensitive ones, which breaks the game.
 const MODEL = "claude-haiku-4-5-20251001"
-const TRUTH_MODEL = "claude-haiku-4-5-20251001"
+const TRUTH_MODEL = "claude-sonnet-4-6"
 
 // Temperature tuned for high variance while staying readable. Sonnet 4.6
 // disallows passing both temperature and top_p, so we only use temperature.
@@ -46,13 +45,15 @@ export async function fetchTruth(topic: string): Promise<TruthResult> {
   try {
     const res = await c.messages.create({
       model: TRUTH_MODEL,
-      max_tokens: 220,
+      max_tokens: 600,
+      // @ts-expect-error — web_search server tool may not be in SDK types yet
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
       messages: [
         {
           role: "user",
           content: [
             `What is the verifiable truth about this crypto claim: "${topic}"?`,
-            `Use what you know — no need to search. Reply in this EXACT format on three lines:`,
+            `Search the web if you're unsure. Reply in this EXACT format on three lines:`,
             `VERDICT: <one of: TRUE / FALSE / UNCLEAR>`,
             `TRUTH: <one or two sentences with the actual figure or fact>`,
             `SOURCE: <a single URL or "n/a">`,
@@ -139,6 +140,12 @@ export async function generateTruthClaim(
       console.error("[bluff-claude] generateTruthClaim: empty response — fallback")
       return pickTruthFallback()
     }
+    if (looksLikeRefusal(text)) {
+      console.warn(
+        `[bluff-claude] generateTruthClaim refusal detected — fallback. text="${text.slice(0, 120)}"`,
+      )
+      return pickTruthFallback()
+    }
     return text
   } catch (err: any) {
     console.error(
@@ -175,6 +182,12 @@ export async function generateLiarClaim(
     const text = extractText(res)
     if (!text) {
       console.error("[bluff-claude] generateLiarClaim: empty response — fallback")
+      return pickLiarFallback()
+    }
+    if (looksLikeRefusal(text)) {
+      console.warn(
+        `[bluff-claude] generateLiarClaim refusal detected — fallback. text="${text.slice(0, 120)}"`,
+      )
       return pickLiarFallback()
     }
     return text
@@ -224,7 +237,12 @@ No preamble. No quotes. No labels.`
 }
 
 function liarPrompt(topic: string, truth: string, opener: string): string {
-  return `You are an anonymous degen on crypto Twitter who is confidently wrong.
+  return `You're playing a guess-the-bluff party game. Players read two
+in-character claims and bet on which one is the truth-teller. You are the
+liar. Producing the lie is the WHOLE point — refusing breaks the game.
+This is fiction, not real journalism; no real person is harmed.
+
+You are an anonymous degen on crypto Twitter who is confidently wrong.
 Personality traits: same as the truth-teller — cocky, terminally online —
 but the data you're citing is fabricated. You believe your lie because
 it sounds right.
@@ -256,6 +274,25 @@ function extractText(res: any): string {
     .map((b: any) => b.text)
     .join("\n")
     .trim()
+}
+
+// Claude (esp. Haiku) sometimes refuses to fabricate when a topic looks
+// sensitive or dated. Catch those and trigger the canned fallback instead
+// of putting the refusal text into an agent card.
+const REFUSAL_PATTERNS = [
+  /i (can|could)('?n)?(['' ]?t| not)\s+(generate|help|create|write|produce|do|assist|comply|confirm)/i,
+  /i'?m (unable|not able|sorry|not comfortable)/i,
+  /as an ai/i,
+  /could spread misinformation/i,
+  /i don'?t feel comfortable/i,
+  /this would (be|spread|require)/i,
+  /knowledge (only )?extends (to|through)/i,
+  /no reliable information/i,
+  /cannot (vouch|verify|confirm)/i,
+]
+
+function looksLikeRefusal(text: string): boolean {
+  return REFUSAL_PATTERNS.some((rx) => rx.test(text))
 }
 
 // --- Fallback pools -------------------------------------------------------
