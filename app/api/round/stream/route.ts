@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { getRound } from "@/lib/bluff-state"
+import { verifyRound } from "@/lib/round-token"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -11,15 +12,40 @@ export const maxDuration = 300
 const TOKEN_MS = 80
 
 function tokenize(text: string): string[] {
-  // Word + trailing whitespace as one "token" — feels natural when streamed.
   return text.match(/\S+\s*/g) || []
+}
+
+type RoundData = {
+  id: string
+  topic: string
+  claimA: string
+  claimB: string
+  liar: "A" | "B"
+  truth: string
+  source: string
+  bettingDeadline: number
 }
 
 export async function GET(req: NextRequest) {
   const roundId = req.nextUrl.searchParams.get("roundId")
+  const roundToken = req.nextUrl.searchParams.get("roundToken")
   if (!roundId) return new Response("missing roundId", { status: 400 })
 
-  const round = getRound(roundId)
+  // Prefer warm-lambda in-memory lookup, fall back to the signed token
+  // (which any lambda can decode with the shared secret).
+  let round: RoundData | undefined = getRound(roundId)
+  if (!round && roundToken) {
+    try {
+      const decoded = verifyRound(roundToken)
+      if (decoded.id !== roundId) {
+        return new Response("round token / id mismatch", { status: 400 })
+      }
+      round = decoded
+    } catch (e: any) {
+      console.error("[round/stream] verify token failed:", e?.message ?? e)
+      return new Response("invalid round token", { status: 400 })
+    }
+  }
   if (!round) return new Response("round not found", { status: 404 })
 
   const encoder = new TextEncoder()
@@ -33,9 +59,9 @@ export async function GET(req: NextRequest) {
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
       send("meta", {
-        roundId: round.id,
-        topic: round.topic,
-        bettingDeadline: round.bettingDeadline,
+        roundId: round!.id,
+        topic: round!.topic,
+        bettingDeadline: round!.bettingDeadline,
       })
 
       const streamClaim = async (agent: "A" | "B", text: string) => {
@@ -47,22 +73,21 @@ export async function GET(req: NextRequest) {
         send("agent_done", { agent })
       }
 
-      await streamClaim("A", round.claimA)
-      await streamClaim("B", round.claimB)
+      await streamClaim("A", round!.claimA)
+      await streamClaim("B", round!.claimB)
 
-      send("betting_open", { deadline: round.bettingDeadline })
+      send("betting_open", { deadline: round!.bettingDeadline })
 
-      // Poll the deadline so /api/round/bet can collapse it after the user
-      // places their bet — otherwise we'd be stuck in a long sleep that
-      // captured the original deadline.
-      while (Date.now() < round.bettingDeadline) {
-        await sleep(250)
-      }
+      // Token-based round can't honor /bet's deadline-collapse trick across
+      // lambdas, so we just wait for the original deadline. Bets still work;
+      // the reveal just isn't instant after the user picks.
+      const wait = round!.bettingDeadline - Date.now()
+      if (wait > 0) await sleep(wait)
 
       send("reveal", {
-        liar: round.liar,
-        truth: round.truth,
-        source: round.source,
+        liar: round!.liar,
+        truth: round!.truth,
+        source: round!.source,
       })
 
       controller.close()

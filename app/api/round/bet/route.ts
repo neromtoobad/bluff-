@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { addBet, getRound, type Side } from "@/lib/bluff-state"
+import { addBet, getRound, saveRound, type Side } from "@/lib/bluff-state"
 import { verifyUSDCTransfer } from "@/lib/arc-viem"
 import { arcExplorerTx } from "@/lib/chains"
+import { verifyRound } from "@/lib/round-token"
 import type { Address, Hex } from "viem"
 
 export const runtime = "nodejs"
@@ -9,6 +10,7 @@ export const runtime = "nodejs"
 export async function POST(req: Request) {
   let body: {
     roundId?: string
+    roundToken?: string
     walletAddress?: string
     pick?: Side
     amount?: string
@@ -39,7 +41,40 @@ export async function POST(req: Request) {
     )
   }
 
-  const round = getRound(roundId)
+  // Memory first; hydrate from signed token if this lambda didn't run /start.
+  let round = getRound(roundId)
+  if (!round && body.roundToken) {
+    try {
+      const decoded = verifyRound(body.roundToken)
+      if (decoded.id !== roundId) {
+        return NextResponse.json({ error: "round token / id mismatch" }, { status: 400 })
+      }
+      // Materialize into the in-memory store so settle (likely same lambda
+      // if user clicks fast) can find it without round-token round-trip.
+      saveRound({
+        id: decoded.id,
+        topic: decoded.topic,
+        topicSource: decoded.topicSource,
+        topicUrl: decoded.topicUrl ?? undefined,
+        liar: decoded.liar,
+        truth: decoded.truth,
+        source: decoded.source,
+        claimA: decoded.claimA,
+        claimB: decoded.claimB,
+        createdAt: Date.now(),
+        streamingDoneAt: 0,
+        bettingDeadline: decoded.bettingDeadline,
+        revealAt: decoded.bettingDeadline,
+        bets: [],
+      })
+      round = getRound(roundId)
+    } catch (e: any) {
+      return NextResponse.json(
+        { error: `invalid round token: ${e?.message ?? e}` },
+        { status: 400 },
+      )
+    }
+  }
   if (!round) return NextResponse.json({ error: "round not found" }, { status: 404 })
   if (Date.now() > round.bettingDeadline) {
     return NextResponse.json({ error: "betting closed" }, { status: 409 })

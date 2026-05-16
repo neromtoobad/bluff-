@@ -9,6 +9,7 @@ import {
   truthOpener,
   liarOpener,
 } from "@/lib/bluff-claude"
+import { signRound } from "@/lib/round-token"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -60,11 +61,27 @@ export async function POST() {
     bets: [],
   })
 
+  // Stateless round token — lets /stream, /bet, /settle work even when they
+  // land on a different Vercel lambda than /start.
+  const roundToken = signRound({
+    id,
+    topic,
+    topicSource,
+    topicUrl,
+    liar,
+    truth,
+    source,
+    claimA,
+    claimB,
+    bettingDeadline,
+  })
+
   return NextResponse.json({
     roundId: id,
     topic,
     topicSource,
     topicUrl,
     liarRevealedAt: bettingDeadline,
+    roundToken,
   })
 }

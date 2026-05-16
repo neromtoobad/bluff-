@@ -58,6 +58,7 @@ export default function PlayPage() {
   const [topicUrl, setTopicUrl] = useState<string | null>(null)
   const [amount, setAmount] = useState<number>(0.5)
   const roundIdRef = useRef<string | null>(null)
+  const roundTokenRef = useRef<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
   const autoStartedRef = useRef(false)
 
@@ -98,7 +99,22 @@ export default function PlayPage() {
         const res = await fetch("/api/round/settle", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roundId }),
+          body: JSON.stringify({
+            roundId,
+            roundToken: roundTokenRef.current,
+            // Fallback for Vercel cross-lambda: if the settle lambda has no
+            // in-memory record of this user's bet, this lets it settle anyway.
+            userBet:
+              currentBet && walletAddress
+                ? {
+                    walletAddress,
+                    pick: currentBet.pick,
+                    amount: currentBet.amount.toFixed(2),
+                    txHash: currentBet.txHash,
+                    explorerUrl: currentBet.explorerUrl,
+                  }
+                : undefined,
+          }),
         })
         const json = await res.json()
         if (json?.tell) setTell(json.tell)
@@ -174,14 +190,20 @@ export default function PlayPage() {
       setPhase("idle")
       return
     }
-    const { roundId, topic: t, topicUrl: tu, liarRevealedAt } = await res.json()
+    const { roundId, topic: t, topicUrl: tu, liarRevealedAt, roundToken } =
+      await res.json()
     roundIdRef.current = roundId
+    roundTokenRef.current = roundToken ?? null
     setTopic(t)
     setTopicUrl(tu ?? null)
     setDeadline(liarRevealedAt)
     setPhase("streaming")
 
-    const es = new EventSource(`/api/round/stream?roundId=${roundId}`)
+    // Pass roundToken so the stream can serve even from a cold lambda.
+    const streamUrl =
+      `/api/round/stream?roundId=${encodeURIComponent(roundId)}` +
+      (roundToken ? `&roundToken=${encodeURIComponent(roundToken)}` : "")
+    const es = new EventSource(streamUrl)
     esRef.current = es
 
     es.addEventListener("agent_start", (e) => {
@@ -394,6 +416,7 @@ export default function PlayPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roundId,
+            roundToken: roundTokenRef.current,
             walletAddress,
             pick,
             amount: amountStr,
@@ -487,6 +510,7 @@ export default function PlayPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           roundId,
+          roundToken: roundTokenRef.current,
           walletAddress,
           pick,
           amount: amountStr,
