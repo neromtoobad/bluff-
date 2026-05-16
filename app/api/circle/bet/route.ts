@@ -71,13 +71,16 @@ export async function POST(req: Request) {
 
     const valueSmallestUnit = parseUnits(amount, USDC_DECIMALS).toString()
 
+    // Circle's REST API takes feeLevel as a flat top-level field; the SDK
+    // wraps it in `{ fee: { type: "level", config: { feeLevel } } }` but the
+    // raw API rejects that shape with "'gasPrice' field may not be empty".
     const reqBody = {
       idempotencyKey: randomUUID(),
       walletId,
       contractAddress: USDC_ADDRESS,
       abiFunctionSignature: "transfer(address,uint256)",
       abiParameters: [escrow, valueSmallestUnit],
-      fee: { type: "level", config: { feeLevel: "MEDIUM" } },
+      feeLevel: "MEDIUM",
     }
 
     const res = await fetch(
