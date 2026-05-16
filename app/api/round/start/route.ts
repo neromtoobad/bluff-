@@ -17,10 +17,30 @@ export const dynamic = "force-dynamic"
 const ROUND_DURATION_MS = 60_000
 
 export async function POST() {
-  const { topic, source: topicSource, url: topicUrl } = await getRoundTopic()
+  const picked = await getRoundTopic()
+  const { topic, source: topicSource, url: topicUrl } = picked
   const liar: Side = Math.random() < 0.5 ? "A" : "B"
 
-  const { truth, source, verdict } = await fetchTruth(topic)
+  // Prefer pre-verified data from the pool when present — skips the ~3-5s
+  // web-search fetchTruth call and avoids hallucinated verdicts.
+  let truth: string
+  let source: string
+  let verdict: "true" | "false" | "unclear"
+  if (picked.verdict && picked.truthSummary) {
+    truth = picked.truthSummary
+    source = picked.truthSource ?? "verified-pool"
+    verdict =
+      picked.verdict === "TRUE"
+        ? "true"
+        : picked.verdict === "FALSE"
+          ? "false"
+          : "unclear"
+  } else {
+    const fetched = await fetchTruth(topic)
+    truth = fetched.truth
+    source = fetched.source
+    verdict = fetched.verdict
+  }
 
   // The truth-teller's stance is dictated by the verdict; the liar takes
   // the opposite. For "unclear", we coin-flip and still hand opposite
