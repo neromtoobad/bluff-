@@ -54,9 +54,9 @@ export default function AgentCard({
     <div className={`flip-3d deal-in h-full ${hoverWrap}`}>
       <div className={`flip-inner h-full ${flipped ? "flipped" : ""}`}>
         <div className={`flip-face bluff-card h-full ${cardTone} ${speakingTone}${winnerRing}${selectedRing}`}>
-          <div className="bluff-card-inner flex h-full flex-col items-center gap-4">
+          <div className="bluff-card-inner flex h-full flex-col items-center gap-2">
             <div className="flex w-full items-center justify-between">
-              <span className="font-display text-lg tracking-wide" style={{ color: `var(${accentVar})` }}>
+              <span className="font-display text-base tracking-wide" style={{ color: `var(${accentVar})` }}>
                 ◆ {label}
               </span>
               <span
@@ -74,12 +74,12 @@ export default function AgentCard({
             />
             {/* Claim area — flex-grow + min-height pins the card height
                 regardless of how long the streamed text ends up. */}
-            <div className="flex w-full flex-1 items-start justify-center" style={{ minHeight: 220 }}>
+            <div className="flex w-full flex-1 items-start justify-center" style={{ minHeight: 140 }}>
               {children}
             </div>
             {selectable && hint && (
               <div
-                className="bluff-tap-hint w-full rounded-xl border-2 px-3 py-2 text-center font-display text-base tracking-wide"
+                className="bluff-tap-hint w-full rounded-xl border-2 px-3 py-1.5 text-center font-display text-sm tracking-wide"
                 style={{
                   borderColor: `var(${accentVar})`,
                   color: `var(${accentVar})`,

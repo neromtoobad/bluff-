@@ -8,7 +8,7 @@ type Props = {
   intensity: number // 0-100, controls particle density
 }
 
-const SIZE = 200
+const SIZE = 140
 
 const BULL_COLOR = 0xffb800 // amber
 const BULL_HORN_COLOR = 0xfff0c0
