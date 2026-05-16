@@ -104,11 +104,10 @@ export async function verifyUSDCTransfer(opts: {
   if (receipt.status !== "success") {
     return { ok: false, reason: `tx status=${receipt.status}` }
   }
-  if (
-    (receipt.to ?? "").toLowerCase() !== USDC_ADDRESS.toLowerCase()
-  ) {
-    return { ok: false, reason: "tx not sent to USDC contract" }
-  }
+  // Don't check receipt.to — for ERC-4337 SCAs (Circle user-controlled
+  // wallets), the tx goes to the EntryPoint contract, not USDC. The
+  // Transfer-event match below already requires the log to have been
+  // emitted by the USDC contract, which is the property we actually need.
 
   const expectedValue = parseUnits(expectedAmountUSDC, USDC_DECIMALS)
   const fromTopic = `0x${"0".repeat(24)}${from.slice(2).toLowerCase()}`
