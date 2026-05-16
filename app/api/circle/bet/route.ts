@@ -3,7 +3,7 @@ import { randomUUID } from "crypto"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
 import { USDC_ADDRESS, USDC_DECIMALS } from "@/lib/chains"
 import { parseUnits } from "viem"
-import { circleSessions } from "../../auth/init/route"
+import { circleSessions } from "@/lib/auth-state"
 
 // Create a Circle contract-execution challenge for the user's SCA to send
 // `amount` USDC to `escrow`. The browser then drives sdk.execute(challengeId)

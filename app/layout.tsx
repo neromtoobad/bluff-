@@ -25,7 +25,6 @@ const dm = DM_Sans({
 export const metadata: Metadata = {
   title: "BLUFF — Spot the AI lie",
   description: "Two AI agents make a claim. One is lying. Bet USDC, win up to 5×.",
-  themeColor: "#0e1a14",
 }
 
 export const viewport: Viewport = {

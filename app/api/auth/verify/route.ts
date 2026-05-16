@@ -5,7 +5,7 @@ import {
   deriveMockAddress,
   isMockMode,
   mockOtps,
-} from "../init/route"
+} from "@/lib/auth-state"
 
 export async function POST(req: Request) {
   try {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
-import { circleSessions } from "../../auth/init/route"
+import { circleSessions } from "@/lib/auth-state"
 
 // Return a fresh userToken + encryptionKey for the Web SDK to authenticate
 // against a contract-execution challenge. We never put these in

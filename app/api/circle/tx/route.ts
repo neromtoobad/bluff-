@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
-import { circleSessions } from "../../auth/init/route"
+import { circleSessions } from "@/lib/auth-state"
 
 // Poll a Circle user-controlled transaction by id. The client calls this
 // every ~1.5s after sdk.execute(challengeId) resolves, until state is

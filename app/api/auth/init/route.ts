@@ -1,27 +1,12 @@
 import { NextResponse } from "next/server"
-import { createHash, randomUUID } from "crypto"
+import { randomUUID } from "crypto"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
-
-// Globally-pinned singletons so dev hot-reload doesn't wipe state.
-const _g = globalThis as unknown as {
-  __userIdByEmail?: Map<string, string>
-  __mockOtps?: Map<string, string>
-  __circleSessions?: Map<
-    string,
-    { userId: string; userToken: string; encryptionKey: string }
-  >
-}
-const userIdByEmail: Map<string, string> = _g.__userIdByEmail ?? new Map()
-const mockOtps: Map<string, string> = _g.__mockOtps ?? new Map()
-const circleSessions = _g.__circleSessions ?? new Map()
-if (!_g.__userIdByEmail) _g.__userIdByEmail = userIdByEmail
-if (!_g.__mockOtps) _g.__mockOtps = mockOtps
-if (!_g.__circleSessions) _g.__circleSessions = circleSessions
-
-function isMockMode(): boolean {
-  const key = process.env.CIRCLE_API_KEY
-  return !key || key === "MOCK" || process.env.NEXT_PUBLIC_AUTH_MOCK === "1"
-}
+import {
+  circleSessions,
+  isMockMode,
+  mockOtps,
+  userIdByEmail,
+} from "@/lib/auth-state"
 
 async function asJson<T = any>(res: Response): Promise<T | null> {
   try {
@@ -187,9 +172,3 @@ export async function POST(req: Request) {
   }
 }
 
-export function deriveMockAddress(userId: string): string {
-  const hash = createHash("sha256").update(`mock-wallet:${userId}`).digest("hex")
-  return `0x${hash.slice(0, 40)}`
-}
-
-export { userIdByEmail, mockOtps, isMockMode, circleSessions }

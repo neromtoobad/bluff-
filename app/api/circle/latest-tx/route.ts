@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { CIRCLE_API_BASE } from "@/lib/circle-wallets"
-import { circleSessions } from "../../auth/init/route"
+import { circleSessions } from "@/lib/auth-state"
 
 // Fallback the play page uses when sdk.execute doesn't surface a
 // transactionId: list the user's recent transactions and return the
