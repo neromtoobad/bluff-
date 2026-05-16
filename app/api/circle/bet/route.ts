@@ -106,11 +106,17 @@ export async function POST(req: Request) {
       )
     }
     const json = (await res.json()) as {
-      data?: { challengeId?: string; id?: string }
+      data?: { challengeId?: string; id?: string; transactionId?: string }
     }
     const challengeId = json?.data?.challengeId
-    const transactionId = json?.data?.id
+    // Circle's contractExecution response only includes challengeId per docs,
+    // but some envs include id/transactionId — capture if present, otherwise
+    // the client falls back to /api/circle/latest-tx after sdk.execute.
+    const transactionId = json?.data?.id ?? json?.data?.transactionId
     if (!challengeId) {
+      console.error(
+        `[circle/bet] no challengeId in response body=${JSON.stringify(json)}`,
+      )
       return NextResponse.json(
         { error: "Circle did not return challengeId" },
         { status: 502 },

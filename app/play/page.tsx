@@ -318,12 +318,20 @@ export default function PlayPage() {
           encryptionKey: pingJson.encryptionKey,
         })
 
+        // Capture any tx id the SDK callback surfaces — varies by SDK version.
+        let executeTxId: string | null = null
         await new Promise<void>((resolve, reject) => {
           sdk.execute(challengeId, (err: any, result: any) => {
             if (err) {
               reject(new Error(err?.message ?? "PIN approval failed"))
               return
             }
+            executeTxId =
+              result?.data?.id ??
+              result?.data?.transactionId ??
+              result?.transactionId ??
+              result?.id ??
+              null
             const s = (result?.status ?? "").toUpperCase()
             if (s === "COMPLETE" || s === "COMPLETED" || s === "IN_PROGRESS") {
               resolve()
@@ -333,8 +341,19 @@ export default function PlayPage() {
           })
         })
 
-        // Poll Circle until the tx is SENT (txHash assigned) or terminal.
-        const txId = transactionId
+        // Resolve a tx id from (a) the original challenge response,
+        // (b) the sdk.execute callback, or (c) listing the user's most
+        // recent transactions for this wallet.
+        let txId: string | null = transactionId ?? executeTxId ?? null
+        if (!txId) {
+          const latest = await fetch(
+            `/api/circle/latest-tx?userId=${encodeURIComponent(userId)}&walletId=${encodeURIComponent(walletId)}`,
+          )
+          const latestJson = await latest.json()
+          if (latest.ok && latestJson?.id) {
+            txId = latestJson.id
+          }
+        }
         if (!txId) {
           throw new Error("Circle did not return a transactionId")
         }
