@@ -7,6 +7,12 @@ import {
   mockOtps,
 } from "@/lib/auth-state"
 
+export const runtime = "nodejs"
+// /verify retries up to ~12s waiting for Circle to index the new wallet,
+// so the lambda needs a generous timeout. Pro tier honors 60s; Hobby caps
+// at 60s for Node routes anyway.
+export const maxDuration = 60
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
@@ -58,55 +64,102 @@ export async function POST(req: Request) {
         { status: 500 },
       )
     }
-    const session = circleSessions.get(userId)
+    // Try in-memory session map first; on Vercel, /init may have landed on
+    // a different lambda than /verify — in that case mint a fresh userToken
+    // from Circle (same pattern as /api/circle/bet's fallback).
+    let session = circleSessions.get(userId)
     if (!session) {
-      return NextResponse.json(
-        { error: "no Circle session — call /init first" },
-        { status: 400 },
-      )
+      const tokenRes = await fetch(`${CIRCLE_API_BASE}/users/token`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      })
+      if (!tokenRes.ok) {
+        const detail = await tokenRes.text()
+        console.error(
+          `[auth/verify] token refresh failed status=${tokenRes.status} body=${detail}`,
+        )
+        return NextResponse.json(
+          { error: "Circle token refresh failed", detail },
+          { status: 502 },
+        )
+      }
+      const tj = await tokenRes.json()
+      const userToken = tj?.data?.userToken
+      const encryptionKey = tj?.data?.encryptionKey
+      if (!userToken || !encryptionKey) {
+        return NextResponse.json(
+          { error: "Circle did not return userToken / encryptionKey" },
+          { status: 502 },
+        )
+      }
+      session = { userId, userToken, encryptionKey }
+      circleSessions.set(userId, session)
     }
 
-    // User-controlled `/wallets` infers the user from X-User-Token and rejects
-    // any `userId` query param ("API parameter invalid" → 400).
-    const listRes = await fetch(`${CIRCLE_API_BASE}/wallets`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "X-User-Token": session.userToken,
-      },
-    })
-    if (!listRes.ok) {
-      const detail = await listRes.text()
-      console.error(
-        `[auth/verify] GET /wallets failed status=${listRes.status} body=${detail}`,
-      )
-      return NextResponse.json(
-        {
-          error: "Circle wallets list failed",
-          status: listRes.status,
-          detail,
+    // Circle's /wallets index lags ~3-10s after PIN setup completes. Retry
+    // with backoff so we don't fail just because Circle hasn't indexed yet.
+    // User-controlled /wallets infers the user from X-User-Token and rejects
+    // any `userId` query param.
+    const MAX_ATTEMPTS = 8
+    const DELAY_MS = 1500
+    let picked:
+      | { id?: string; address?: string; blockchain?: string }
+      | undefined
+    let lastErrorDetail = ""
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const listRes = await fetch(`${CIRCLE_API_BASE}/wallets`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "X-User-Token": session.userToken,
         },
-        { status: 502 },
-      )
-    }
-    const json = (await listRes.json()) as {
-      data?: {
-        wallets?: Array<{
-          id?: string
-          address?: string
-          blockchain?: string
-        }>
+      })
+      if (!listRes.ok) {
+        lastErrorDetail = await listRes.text()
+        console.error(
+          `[auth/verify] GET /wallets attempt=${attempt} failed status=${listRes.status} body=${lastErrorDetail}`,
+        )
+        return NextResponse.json(
+          {
+            error: "Circle wallets list failed",
+            status: listRes.status,
+            detail: lastErrorDetail,
+          },
+          { status: 502 },
+        )
+      }
+      const json = (await listRes.json()) as {
+        data?: {
+          wallets?: Array<{
+            id?: string
+            address?: string
+            blockchain?: string
+          }>
+        }
+      }
+      const wallets = json?.data?.wallets ?? []
+      const arcWallet = wallets.find((w) => w.blockchain === "ARC-TESTNET")
+      picked = arcWallet ?? wallets[0]
+      if (picked?.address) break
+
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, DELAY_MS))
       }
     }
-    // Prefer an Arc testnet wallet; otherwise take the first one returned.
-    const wallets = json?.data?.wallets ?? []
-    const arcWallet = wallets.find((w) => w.blockchain === "ARC-TESTNET")
-    const picked = arcWallet ?? wallets[0]
+
     if (!picked?.address) {
+      console.warn(
+        `[auth/verify] no wallet after ${MAX_ATTEMPTS} attempts for userId=${userId}`,
+      )
       return NextResponse.json(
         {
           error:
-            "wallet not yet provisioned — complete the Circle Web SDK PIN flow with the userToken from /init, then retry",
+            "wallet not yet provisioned by Circle — wait a few seconds and try again",
         },
         { status: 409 },
       )
