@@ -60,10 +60,6 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         </span>
       </Link>
 
-      <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
-        <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
-      </span>
-
       <a
         href="https://faucet.circle.com/"
         target="_blank"
@@ -104,7 +100,10 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         })}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 lg:gap-3">
+        <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
+          <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
+        </span>
         <ConnectButton />
         <button
           type="button"
