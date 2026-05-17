@@ -40,7 +40,7 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
   }, [open])
 
   return (
-    <nav className="relative z-30 flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+    <nav className="relative z-30 flex items-center justify-between gap-6 px-4 py-3 sm:px-6 sm:py-4 lg:gap-8">
       <Link
         href="/"
         className="group flex min-w-0 items-center gap-2 sm:gap-3"
@@ -49,8 +49,8 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         <span
           className={`jackpot-title font-display tracking-wide leading-none ${
             compact
-              ? "text-[26px] sm:text-3xl md:text-4xl"
-              : "text-[30px] sm:text-4xl md:text-5xl"
+              ? "text-[24px] sm:text-2xl md:text-3xl"
+              : "text-[26px] sm:text-3xl md:text-4xl"
           }`}
         >
           BL<span
