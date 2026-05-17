@@ -54,8 +54,8 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
           }`}
         >
           BL<span
-            className="text-[color:var(--lime)]"
-            style={{ WebkitTextStroke: "0", textShadow: "0 0 20px rgba(124,214,36,0.7)" }}
+            className="text-[color:var(--arc-blue)]"
+            style={{ WebkitTextStroke: "0", textShadow: "0 0 22px rgba(78,161,255,0.85)" }}
           >◯</span>FF
         </span>
         <span className="arc-live-pill hidden items-center gap-2 rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] md:inline-flex">
@@ -185,6 +185,7 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
           </div>
         </>
       )}
+      <div className="arc-ribbon absolute inset-x-0 bottom-0" aria-hidden />
     </nav>
   )
 }

@@ -3,20 +3,21 @@
 @tailwind utilities;
 
 :root {
-  /* BLUFF — forest fantasy jackpot palette */
-  --bg: #0e1a14;
-  --bg-deep: #060d09;
-  --bg-soft: #11231a;
-  --surface: #142a20;
-  --surface-2: #1c3a2a;
-  --bg-card: #142a20;
-  --bg-card-2: #1c3a2a;
-  --border: #234034;
-  /* Cards / sections borders — tinted slightly toward Arc-blue so the
-     forest-green base reads with a network/data feel instead of pure foliage. */
-  --border-soft: #2a4d5a;
-  --text: #f6f3e6;
-  --text-mute: #7d8a82;
+  /* BLUFF — Arc-network navy base. Forest-green is now only used for
+     lime CTAs; all surfaces, borders, and ambient washes lean blue.
+     The pine-ridge silhouette + chest mascot stay warm-toned to keep
+     a hint of the original poker-night character. */
+  --bg: #0a1525;
+  --bg-deep: #050b18;
+  --bg-soft: #0d1a2c;
+  --surface: #102035;
+  --surface-2: #16304a;
+  --bg-card: #102035;
+  --bg-card-2: #16304a;
+  --border: #1f3a5a;
+  --border-soft: #2c4d70;
+  --text: #f0f3fa;
+  --text-mute: #7a8aa3;
 
   /* Vibrant lime — primary CTA */
   --lime: #7cd624;
@@ -98,27 +99,30 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(
-      ellipse at 50% 35%,
-      rgba(124, 214, 36, 0.16) 0%,
-      transparent 55%
-    ),
+    /* Arc-blue dome — primary atmospheric layer, centered behind the hero. */
     radial-gradient(
       ellipse at 50% 30%,
-      rgba(255, 183, 0, 0.10) 0%,
-      transparent 40%
+      rgba(78, 161, 255, 0.28) 0%,
+      transparent 55%
     ),
-    /* Arc-blue wash sweeping in from the upper-left — barely visible but
-       gives the page a network/data-feel that nods to Arc. */
+    /* Second arc-blue glow from upper-left, gives the page depth. */
     radial-gradient(
-      ellipse at 10% 0%,
-      rgba(78, 161, 255, 0.10) 0%,
+      ellipse at 8% 5%,
+      rgba(78, 161, 255, 0.18) 0%,
+      transparent 45%
+    ),
+    /* Warm gold ember in the lower-third — keeps the jackpot poker mood
+       from disappearing entirely. */
+    radial-gradient(
+      ellipse at 50% 90%,
+      rgba(255, 183, 0, 0.10) 0%,
       transparent 50%
     ),
+    /* Subtle navy gradient fade to deep base. */
     radial-gradient(
       ellipse at center,
-      rgba(20, 42, 32, 0.7) 0%,
-      var(--bg-deep) 70%,
+      rgba(22, 48, 74, 0.55) 0%,
+      var(--bg-deep) 75%,
       var(--bg) 100%
     );
   z-index: 0;
@@ -463,6 +467,45 @@ body > * {
   animation: bluff-sheen 900ms ease-out;
 }
 
+/* Arc network ribbon — thin scan line under the TopNav. The gradient
+   slides slowly across, evoking a network data pulse. Unique to BLUFF;
+   ties every page to the Arc brand without dominating the layout. */
+.arc-ribbon {
+  position: relative;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(78, 161, 255, 0.15) 20%,
+    rgba(78, 161, 255, 0.85) 50%,
+    rgba(78, 161, 255, 0.15) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: arc-ribbon-sweep 7s linear infinite;
+  opacity: 0.9;
+  z-index: 5;
+}
+.arc-ribbon::before {
+  content: "";
+  position: absolute;
+  inset: -1px 0 -1px 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(78, 161, 255, 0.35) 50%,
+    transparent 100%
+  );
+  filter: blur(4px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+@keyframes arc-ribbon-sweep {
+  0%   { background-position: 200% 50%; }
+  100% { background-position: -100% 50%; }
+}
+
 /* Arc Testnet live indicator — Arc-blue dot inside a pill, pulsing.
    Color borrowed from Arc's brand so the network chip reads as Arc, not
    as another lime CTA. */
@@ -679,7 +722,7 @@ body > * {
   z-index: 0;
   background:
     radial-gradient(ellipse at center bottom, rgba(0, 0, 0, 0.55) 0%, transparent 60%),
-    url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201600%20240%27%20preserveAspectRatio%3D%27none%27%3E%3Cg%20fill%3D%27%23050d09%27%3E%3Cpolygon%20points%3D%270%2C240%2050%2C140%20100%2C240%27%2F%3E%3Cpolygon%20points%3D%2780%2C240%20140%2C120%20200%2C240%27%2F%3E%3Cpolygon%20points%3D%27170%2C240%20230%2C90%20290%2C240%27%2F%3E%3Cpolygon%20points%3D%27260%2C240%20320%2C150%20380%2C240%27%2F%3E%3Cpolygon%20points%3D%27350%2C240%20420%2C70%20490%2C240%27%2F%3E%3Cpolygon%20points%3D%27460%2C240%20520%2C140%20580%2C240%27%2F%3E%3Cpolygon%20points%3D%27550%2C240%20620%2C100%20690%2C240%27%2F%3E%3Cpolygon%20points%3D%27660%2C240%20720%2C160%20780%2C240%27%2F%3E%3Cpolygon%20points%3D%27750%2C240%20820%2C80%20890%2C240%27%2F%3E%3Cpolygon%20points%3D%27860%2C240%20920%2C150%20980%2C240%27%2F%3E%3Cpolygon%20points%3D%27950%2C240%201020%2C90%201090%2C240%27%2F%3E%3Cpolygon%20points%3D%271060%2C240%201120%2C140%201180%2C240%27%2F%3E%3Cpolygon%20points%3D%271150%2C240%201220%2C100%201290%2C240%27%2F%3E%3Cpolygon%20points%3D%271260%2C240%201320%2C170%201380%2C240%27%2F%3E%3Cpolygon%20points%3D%271350%2C240%201420%2C80%201490%2C240%27%2F%3E%3Cpolygon%20points%3D%271460%2C240%201520%2C150%201580%2C240%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+    url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%201600%20240%27%20preserveAspectRatio%3D%27none%27%3E%3Cg%20fill%3D%27%23050b18%27%3E%3Cpolygon%20points%3D%270%2C240%2050%2C140%20100%2C240%27%2F%3E%3Cpolygon%20points%3D%2780%2C240%20140%2C120%20200%2C240%27%2F%3E%3Cpolygon%20points%3D%27170%2C240%20230%2C90%20290%2C240%27%2F%3E%3Cpolygon%20points%3D%27260%2C240%20320%2C150%20380%2C240%27%2F%3E%3Cpolygon%20points%3D%27350%2C240%20420%2C70%20490%2C240%27%2F%3E%3Cpolygon%20points%3D%27460%2C240%20520%2C140%20580%2C240%27%2F%3E%3Cpolygon%20points%3D%27550%2C240%20620%2C100%20690%2C240%27%2F%3E%3Cpolygon%20points%3D%27660%2C240%20720%2C160%20780%2C240%27%2F%3E%3Cpolygon%20points%3D%27750%2C240%20820%2C80%20890%2C240%27%2F%3E%3Cpolygon%20points%3D%27860%2C240%20920%2C150%20980%2C240%27%2F%3E%3Cpolygon%20points%3D%27950%2C240%201020%2C90%201090%2C240%27%2F%3E%3Cpolygon%20points%3D%271060%2C240%201120%2C140%201180%2C240%27%2F%3E%3Cpolygon%20points%3D%271150%2C240%201220%2C100%201290%2C240%27%2F%3E%3Cpolygon%20points%3D%271260%2C240%201320%2C170%201380%2C240%27%2F%3E%3Cpolygon%20points%3D%271350%2C240%201420%2C80%201490%2C240%27%2F%3E%3Cpolygon%20points%3D%271460%2C240%201520%2C150%201580%2C240%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
   background-size: 100% 100%, cover;
   background-position: center;
   background-repeat: no-repeat;
