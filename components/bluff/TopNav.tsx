@@ -40,25 +40,41 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
   }, [open])
 
   return (
-    <nav className="relative z-30 flex items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
-      <Link
-        href="/"
-        className="group flex min-w-0 items-center gap-2 sm:gap-3"
-        aria-label="BLUFF home"
-      >
-        <span
-          className={`jackpot-title font-display tracking-wide leading-none ${
-            compact
-              ? "text-[26px] sm:text-3xl md:text-4xl"
-              : "text-[30px] sm:text-4xl md:text-6xl"
-          }`}
+    <nav className="relative z-30 flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+      <div className="flex min-w-0 items-center gap-3 lg:gap-5">
+        <Link
+          href="/"
+          className="group flex min-w-0 items-center gap-2 sm:gap-3"
+          aria-label="BLUFF home"
         >
-          BL<span
-            className="text-[color:var(--arc-blue)]"
-            style={{ WebkitTextStroke: "0", textShadow: "0 0 22px rgba(78,161,255,0.85)" }}
-          >◯</span>FF
+          <span
+            className={`jackpot-title font-display tracking-wide leading-none ${
+              compact
+                ? "text-[26px] sm:text-3xl md:text-4xl"
+                : "text-[30px] sm:text-4xl md:text-5xl"
+            }`}
+          >
+            BL<span
+              className="text-[color:var(--arc-blue)]"
+              style={{ WebkitTextStroke: "0", textShadow: "0 0 22px rgba(78,161,255,0.85)" }}
+            >◯</span>FF
+          </span>
+        </Link>
+
+        <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
+          <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
         </span>
-      </Link>
+
+        <a
+          href="https://faucet.circle.com/"
+          target="_blank"
+          rel="noreferrer"
+          title="Get free test USDC from Circle for Arc Testnet"
+          className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] transition hover:bg-[color:var(--gold-2)]/20 lg:inline-flex"
+        >
+          💧 GET TEST USDC
+        </a>
+      </div>
 
       <div className="hidden items-center gap-2 md:flex">
         {NAV.map((item) => {
