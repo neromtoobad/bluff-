@@ -240,6 +240,15 @@ export default function ConnectButton({ className }: Props) {
           >
             View on Arc explorer ↗
           </a>
+          <a
+            href="https://faucet.circle.com/"
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setMenuOpen(false)}
+            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left font-ui-label text-[11px] tracking-widest text-[color:var(--gold-1)] hover:bg-[color:var(--gold-2)]/15"
+          >
+            💧 Get test USDC ↗
+          </a>
           <button
             type="button"
             onClick={disconnect}

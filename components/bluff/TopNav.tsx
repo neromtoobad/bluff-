@@ -66,16 +66,6 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         </span>
       </Link>
 
-      <a
-        href="https://faucet.circle.com/"
-        target="_blank"
-        rel="noreferrer"
-        title="Get free test USDC from Circle for Arc Testnet"
-        className="hidden items-center gap-1.5 rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] transition hover:bg-[color:var(--gold-2)]/20 md:inline-flex"
-      >
-        💧 GET TEST USDC
-      </a>
-
       <div className="hidden items-center gap-2 md:flex">
         {NAV.map((item) => {
           const active = isActive(pathname, item.href)
