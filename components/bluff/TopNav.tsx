@@ -74,7 +74,7 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         💧 GET TEST USDC
       </a>
 
-      <div className="hidden items-center gap-2 md:flex">
+      <div className="ml-auto hidden items-center gap-2 md:flex">
         {NAV.map((item) => {
           const active = isActive(pathname, item.href)
           if (item.primary) {
@@ -104,7 +104,7 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         })}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 md:ml-4 md:gap-3 lg:ml-6">
         <ConnectButton />
         <button
           type="button"
