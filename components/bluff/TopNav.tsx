@@ -41,24 +41,29 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
 
   return (
     <nav className="relative z-30 flex items-center justify-between gap-6 px-4 py-3 sm:px-6 sm:py-4 lg:gap-8">
-      <Link
-        href="/"
-        className="group flex min-w-0 items-center gap-2 sm:gap-3"
-        aria-label="BLUFF home"
-      >
-        <span
-          className={`jackpot-title font-display tracking-wide leading-none ${
-            compact
-              ? "text-[24px] sm:text-2xl md:text-3xl"
-              : "text-[26px] sm:text-3xl md:text-4xl"
-          }`}
+      <div className="flex min-w-0 items-center gap-3 lg:gap-5">
+        <Link
+          href="/"
+          className="group flex min-w-0 items-center gap-2 sm:gap-3"
+          aria-label="BLUFF home"
         >
-          BL<span
-            className="text-[color:var(--arc-blue)]"
-            style={{ WebkitTextStroke: "0", textShadow: "0 0 22px rgba(78,161,255,0.85)" }}
-          >◯</span>FF
+          <span
+            className={`jackpot-title font-display tracking-wide leading-none ${
+              compact
+                ? "text-[24px] sm:text-2xl md:text-3xl"
+                : "text-[26px] sm:text-3xl md:text-4xl"
+            }`}
+          >
+            BL<span
+              className="text-[color:var(--arc-blue)]"
+              style={{ WebkitTextStroke: "0", textShadow: "0 0 22px rgba(78,161,255,0.85)" }}
+            >◯</span>FF
+          </span>
+        </Link>
+        <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
+          <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
         </span>
-      </Link>
+      </div>
 
       <a
         href="https://faucet.circle.com/"
@@ -100,10 +105,7 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         })}
       </div>
 
-      <div className="flex items-center gap-2 lg:gap-3">
-        <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
-          <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
-        </span>
+      <div className="flex items-center gap-2">
         <ConnectButton />
         <button
           type="button"
