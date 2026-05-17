@@ -40,9 +40,10 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
   }, [open])
 
   return (
-    <nav className="relative z-30 flex items-center justify-between px-6 py-3 sm:py-4">
-      {/* LEFT GROUP */}
-      <div className="flex items-center gap-4">
+    <header className="relative flex items-center justify-between px-6 py-4">
+
+      {/* LEFT GROUP — logo + status */}
+      <div className="z-10 flex items-center gap-4">
         <Link
           href="/"
           className="group flex min-w-0 shrink-0 items-center gap-2 sm:gap-3"
@@ -67,49 +68,48 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
         </span>
       </div>
 
-      {/* CENTER — absolutely centered, immune to side-group widths */}
-      <a
-        href="https://faucet.circle.com/"
-        target="_blank"
-        rel="noreferrer"
-        title="Get free test USDC from Circle for Arc Testnet"
-        className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] transition hover:bg-[color:var(--gold-2)]/20 lg:inline-flex"
-      >
-        💧 GET TEST USDC
-      </a>
+      {/* CENTER — absolutely positioned, stays centered always */}
+      <div className="absolute left-1/2 top-1/2 z-0 hidden -translate-x-1/2 -translate-y-1/2 lg:block">
+        <a
+          href="https://faucet.circle.com/"
+          target="_blank"
+          rel="noreferrer"
+          title="Get free test USDC from Circle for Arc Testnet"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] transition hover:bg-[color:var(--gold-2)]/20"
+        >
+          💧 GET TEST USDC
+        </a>
+      </div>
 
-      {/* RIGHT GROUP */}
-      <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-3 md:flex">
-          {NAV.map((item) => {
-            const active = isActive(pathname, item.href)
-            if (item.primary) {
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="lime-cta rounded-xl px-5 py-2 font-display text-base tracking-wide"
-                >
-                  {item.label.toUpperCase()}
-                </Link>
-              )
-            }
+      {/* RIGHT GROUP — nav + wallet */}
+      <div className="z-10 flex items-center gap-3">
+        {NAV.map((item) => {
+          const active = isActive(pathname, item.href)
+          if (item.primary) {
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-full px-3 py-1.5 font-ui-label text-[11px] tracking-widest transition ${
-                  active
-                    ? "bg-[color:var(--gold-2)]/20 text-[color:var(--gold-1)]"
-                    : "text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
-                }`}
+                className="lime-cta hidden rounded-xl px-5 py-2 font-display text-base tracking-wide md:inline-flex"
               >
-                {item.label}
+                {item.label.toUpperCase()}
               </Link>
             )
-          })}
-        </div>
-
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`hidden rounded-full px-3 py-1.5 font-ui-label text-[11px] tracking-widest transition md:inline-flex ${
+                active
+                  ? "bg-[color:var(--gold-2)]/20 text-[color:var(--gold-1)]"
+                  : "text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
+              }`}
+            >
+              {item.label.toUpperCase()}
+            </Link>
+          )
+        })}
         <div className="flex items-center gap-2 md:ml-6">
           <ConnectButton />
           <button
@@ -190,7 +190,6 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
           </div>
         </>
       )}
-      <div className="arc-ribbon absolute inset-x-0 bottom-0" aria-hidden />
-    </nav>
+    </header>
   )
 }
