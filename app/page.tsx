@@ -96,7 +96,7 @@ function Gate() {
           <span className="font-ui-label text-[10px] tracking-widest text-[color:var(--text-mute)]">
             MetaMask, OKX, Rabby, Coinbase Wallet
           </span>
-          <ConnectButton className="lime-cta rounded-xl px-5 py-2 font-display text-base tracking-wide" />
+          <ConnectButton className="lime-cta whitespace-nowrap rounded-xl px-5 py-2 font-display text-base tracking-wide" />
         </div>
       </div>
 

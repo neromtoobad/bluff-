@@ -58,11 +58,11 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
             style={{ WebkitTextStroke: "0", textShadow: "0 0 22px rgba(78,161,255,0.85)" }}
           >◯</span>FF
         </span>
-        <span className="arc-live-pill hidden items-center gap-2 rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] md:inline-flex">
-          <span className="arc-live-dot" /> LIVE ON ARC TESTNET
+        <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] md:inline-flex">
+          <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
         </span>
-        <span className="arc-live-pill inline-flex items-center gap-1.5 rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-2 py-0.5 font-ui-label text-[8px] tracking-widest text-[color:var(--arc-blue)] md:hidden">
-          <span className="arc-live-dot" /> ARC
+        <span className="arc-live-pill inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-2 py-0.5 font-ui-label text-[8px] tracking-widest text-[color:var(--arc-blue)] md:hidden">
+          <span className="arc-live-dot shrink-0" /> ARC
         </span>
       </Link>
 

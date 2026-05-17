@@ -190,7 +190,7 @@ export default function ConnectButton({ className }: Props) {
 
   const baseCls =
     className ??
-    "lime-cta rounded-lg px-4 py-2 font-ui-label text-[11px] tracking-widest"
+    "lime-cta whitespace-nowrap rounded-lg px-4 py-2 font-ui-label text-[11px] tracking-widest"
 
   const isBusy =
     status === "connecting" || status === "switching" || status === "adding"
