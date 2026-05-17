@@ -40,100 +40,107 @@ export default function TopNav({ compact = false }: { compact?: boolean }) {
   }, [open])
 
   return (
-    <nav className="relative z-30 flex items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:gap-6">
-      <Link
-        href="/"
-        className="group flex min-w-0 shrink-0 items-center gap-2 pr-2 sm:gap-3"
-        aria-label="BLUFF home"
-      >
-        <span
-          className={`jackpot-title font-display tracking-wide leading-none ${
-            compact
-              ? "text-[24px] sm:text-2xl md:text-3xl"
-              : "text-[26px] sm:text-3xl md:text-4xl"
-          }`}
+    <nav className="relative z-30 flex items-center justify-between px-6 py-3 sm:py-4">
+      {/* LEFT GROUP */}
+      <div className="flex items-center gap-4">
+        <Link
+          href="/"
+          className="group flex min-w-0 shrink-0 items-center gap-2 sm:gap-3"
+          aria-label="BLUFF home"
         >
-          BL<span
-            className="text-[color:var(--arc-blue)]"
-            style={{ WebkitTextStroke: "0", textShadow: "0 0 10px rgba(78,161,255,0.7)" }}
-          >◯</span>FF
+          <span
+            className={`jackpot-title font-display tracking-wide leading-none ${
+              compact
+                ? "text-[24px] sm:text-2xl md:text-3xl"
+                : "text-[26px] sm:text-3xl md:text-4xl"
+            }`}
+          >
+            BL<span
+              className="text-[color:var(--arc-blue)]"
+              style={{ WebkitTextStroke: "0", textShadow: "0 0 10px rgba(78,161,255,0.7)" }}
+            >◯</span>FF
+          </span>
+        </Link>
+
+        <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
+          <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
         </span>
-      </Link>
+      </div>
 
-      <span className="arc-live-pill hidden items-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--arc-blue)]/50 bg-[color:var(--arc-blue)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--arc-blue)] lg:inline-flex">
-        <span className="arc-live-dot shrink-0" /> LIVE ON ARC TESTNET
-      </span>
-
+      {/* CENTER — absolutely centered, immune to side-group widths */}
       <a
         href="https://faucet.circle.com/"
         target="_blank"
         rel="noreferrer"
         title="Get free test USDC from Circle for Arc Testnet"
-        className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] transition hover:bg-[color:var(--gold-2)]/20 lg:inline-flex"
+        className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--gold-2)]/50 bg-[color:var(--gold-2)]/10 px-3 py-1 font-ui-label text-[10px] tracking-widest text-[color:var(--gold-1)] transition hover:bg-[color:var(--gold-2)]/20 lg:inline-flex"
       >
         💧 GET TEST USDC
       </a>
 
-      <div className="ml-auto hidden items-center gap-2 md:flex">
-        {NAV.map((item) => {
-          const active = isActive(pathname, item.href)
-          if (item.primary) {
+      {/* RIGHT GROUP */}
+      <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 md:flex">
+          {NAV.map((item) => {
+            const active = isActive(pathname, item.href)
+            if (item.primary) {
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="lime-cta rounded-xl px-5 py-2 font-display text-base tracking-wide"
+                >
+                  {item.label.toUpperCase()}
+                </Link>
+              )
+            }
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="lime-cta rounded-xl px-5 py-2 font-display text-base tracking-wide"
+                className={`rounded-full px-3 py-1.5 font-ui-label text-[11px] tracking-widest transition ${
+                  active
+                    ? "bg-[color:var(--gold-2)]/20 text-[color:var(--gold-1)]"
+                    : "text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
+                }`}
               >
-                {item.label.toUpperCase()}
+                {item.label}
               </Link>
             )
-          }
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded-full px-3 py-1.5 font-ui-label text-[11px] tracking-widest transition ${
-                active
-                  ? "bg-[color:var(--gold-2)]/20 text-[color:var(--gold-1)]"
-                  : "text-[color:var(--text-mute)] hover:text-[color:var(--text)]"
-              }`}
-            >
-              {item.label}
-            </Link>
-          )
-        })}
-      </div>
+          })}
+        </div>
 
-      <div className="flex items-center gap-2 md:ml-4 md:gap-3 lg:ml-6">
-        <ConnectButton />
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
-          aria-expanded={open}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 text-[color:var(--text)] md:hidden"
-        >
-          <svg
-            width="18"
-            height="14"
-            viewBox="0 0 18 14"
-            fill="none"
-            aria-hidden
+        <div className="flex items-center gap-2 md:ml-6">
+          <ConnectButton />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Toggle menu"
+            aria-expanded={open}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-2 border-[color:var(--border-soft)] bg-[color:var(--surface)]/85 text-[color:var(--text)] md:hidden"
           >
-            {open ? (
-              <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="3" x2="15" y2="11" />
-                <line x1="15" y1="3" x2="3" y2="11" />
-              </g>
-            ) : (
-              <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="2" y1="3" x2="16" y2="3" />
-                <line x1="2" y1="7" x2="16" y2="7" />
-                <line x1="2" y1="11" x2="16" y2="11" />
-              </g>
-            )}
-          </svg>
-        </button>
+            <svg
+              width="18"
+              height="14"
+              viewBox="0 0 18 14"
+              fill="none"
+              aria-hidden
+            >
+              {open ? (
+                <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="3" y1="3" x2="15" y2="11" />
+                  <line x1="15" y1="3" x2="3" y2="11" />
+                </g>
+              ) : (
+                <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="2" y1="3" x2="16" y2="3" />
+                  <line x1="2" y1="7" x2="16" y2="7" />
+                  <line x1="2" y1="11" x2="16" y2="11" />
+                </g>
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
